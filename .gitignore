@@ -1,0 +1,11 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# 開發輸出（截圖、產生的素材）
+output/
+tmp/
+
+# Node
+node_modules/
+package-lock.json

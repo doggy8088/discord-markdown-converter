@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Discord Markdown 轉換器 — 一鍵將 Markdown 轉為 Discord 支援格式</title>
+
+  <!-- SEO -->
+  <meta name="description" content="將標準 Markdown 轉換為 Discord 頻道適用的 Markdown 格式：表格自動轉清單、移除水平分隔線、清理標題／清單／引用前後的空白行、LaTeX 符號轉 Emoji，並自動降級 H4 以上標題。支援深色與淺色主題。">
+  <meta name="keywords" content="Discord, Markdown, 轉換器, Converter, Discord Markdown, 表格轉清單, LaTeX, 訊息格式, Markdown to Discord">
+  <meta name="author" content="Will 保哥">
+  <meta name="robots" content="index, follow">
+  <meta name="theme-color" content="#5865F2">
+  <meta name="color-scheme" content="light dark">
+  <meta name="generator" content="Discord Markdown Converter">
+  <link rel="canonical" href="https://discord-markdown-converter.gh.miniasp.com/">
+
+  <!-- OpenGraph（分享至 Facebook 等社群平台） -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Discord Markdown 轉換器">
+  <meta property="og:title" content="Discord Markdown 轉換器 — 一鍵將 Markdown 轉為 Discord 支援格式">
+  <meta property="og:description" content="表格自動轉清單、移除分隔線、LaTeX 轉 Emoji、H4+ 標題自動降級，產出可直接貼進 Discord 頻道的 Markdown。">
+  <meta property="og:url" content="https://discord-markdown-converter.gh.miniasp.com/">
+  <meta property="og:image" content="https://discord-markdown-converter.gh.miniasp.com/assets/img/og-image.png">
+  <meta property="og:image:type" content="image/png">
+  <meta property="og:image:width" content="1216">
+  <meta property="og:image:height" content="640">
+  <meta property="og:image:alt" content="Markdown 文件轉換為 Discord 聊天訊息的現代扁平插畫，標題文字為 Markdown → Discord">
+  <meta property="og:locale" content="zh_TW">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Discord Markdown 轉換器">
+  <meta name="twitter:description" content="一鍵將標準 Markdown 轉為 Discord 支援格式：表格轉清單、LaTeX 轉 Emoji、H4+ 自動降級。">
+  <meta name="twitter:image" content="https://discord-markdown-converter.gh.miniasp.com/assets/img/og-image.png">
+  <meta name="twitter:image:alt" content="Markdown 文件轉換為 Discord 聊天訊息的現代扁平插畫">
+
+  <!-- Favicon：支援瀏覽器分頁、iPhone、Android、Windows 動態磚 -->
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="favicon.ico" sizes="48x48">
+  <link rel="icon" href="favicon-32x32.png" type="image/png" sizes="32x32">
+  <link rel="icon" href="favicon-16x16.png" type="image/png" sizes="16x16">
+  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+  <link rel="apple-touch-icon" sizes="192x192" href="android-chrome-192x192.png">
+  <link rel="manifest" href="site.webmanifest">
+  <meta name="msapplication-TileColor" content="#5865F2">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="MD→Discord">
+  <meta name="mobile-web-app-capable" content="yes">
+
+  <!-- 結構化資料 -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "Discord Markdown 轉換器",
+    "alternateName": "Markdown to Discord Converter",
+    "description": "將標準 Markdown 轉換為 Discord 頻道適用的 Markdown 格式：表格自動轉清單、移除水平分隔線、清理空白行、LaTeX 符號轉 Emoji、H4 以上標題自動降級。",
+    "applicationCategory": "DeveloperApplication",
+    "operatingSystem": "Any",
+    "inLanguage": "zh-Hant",
+    "url": "https://discord-markdown-converter.gh.miniasp.com/",
+    "isAccessibleForFree": true,
+    "author": {
+      "@type": "Person",
+      "name": "Will 保哥",
+      "url": "https://www.facebook.com/will.fans/"
+    },
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "TWD" }
+  }
+  </script>
+
+  <!-- 主題初始化（避免載入時閃爍） -->
+  <script>
+  (function () {
+    try {
+      var t = localStorage.getItem("dmc-theme");
+      if (t !== "dark" && t !== "light") {
+        t = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      }
+      document.documentElement.setAttribute("data-theme", t);
+    } catch (e) { /* localStorage 不可用時使用預設 */ }
+  })();
+  </script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap">
+  <link rel="stylesheet" href="css/style.css">
+  <script src="js/converter.js" defer></script>
+  <script src="js/app.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#converter">跳到轉換器</a>
+
+  <header class="site-header">
+    <div class="container header-inner">
+      <a class="brand" href="./" aria-label="Discord Markdown 轉換器 首頁">
+        <img class="brand-icon" src="favicon.svg" alt="" width="36" height="36">
+        <span class="brand-name">Discord Markdown <em>轉換器</em></span>
+      </a>
+      <nav class="header-nav" aria-label="主導覽">
+        <a href="#converter">轉換器</a>
+        <a href="#rules">轉換規則</a>
+        <a href="#support">語法支援</a>
+        <button id="theme-toggle" class="theme-toggle" type="button" aria-label="切換深色／淺色主題" title="切換深色／淺色主題">
+          <svg class="icon-sun" aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+          <svg class="icon-moon" aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg>
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="container hero-grid">
+        <div class="hero-copy">
+          <p class="hero-kicker">Markdown → Discord</p>
+          <h1>把 Markdown 變成<br><span class="gradient-text">Discord 能吃的格式</span></h1>
+          <p class="hero-lead">貼上任何標準 Markdown，自動轉成 Discord 頻道可用的格式：表格變清單、LaTeX 變 Emoji、分隔線與多餘空白行全部清乾淨，直接複製貼進頻道。</p>
+          <ul class="hero-chips" aria-label="主要功能">
+            <li>📋 表格 → 清單</li>
+            <li>✂️ 移除 <code>---</code> 分隔線</li>
+            <li>🧹 清理空白行</li>
+            <li>➡️ LaTeX → Emoji</li>
+            <li>🔽 H4+ 自動降級</li>
+            <li>🌙 深色／淺色主題</li>
+          </ul>
+          <div class="hero-actions">
+            <a class="btn btn-primary" href="#converter">立即開始轉換</a>
+            <a class="btn btn-ghost" href="#rules">了解轉換規則</a>
+          </div>
+        </div>
+        <div class="hero-visual" aria-hidden="true">
+          <picture>
+            <source srcset="assets/img/hero-decoration.webp" type="image/webp">
+            <img src="assets/img/hero-decoration.png" alt="" width="1024" height="1024" decoding="async">
+          </picture>
+        </div>
+      </div>
+    </section>
+
+    <section class="converter" id="converter" aria-label="Markdown 轉換器">
+      <div class="container">
+        <div class="section-head">
+          <h2>開始轉換</h2>
+          <p>左邊貼上標準 Markdown，按中間按鈕轉換，右邊即可複製到 Discord。</p>
+        </div>
+
+        <div class="converter-grid">
+          <div class="panel panel-input">
+            <div class="panel-head">
+              <h3><span class="dot dot-in" aria-hidden="true"></span>原始 Markdown</h3>
+              <div class="panel-tools">
+                <button type="button" class="btn btn-small" id="load-sample">載入範例</button>
+                <button type="button" class="btn btn-small" id="clear-input">清空</button>
+              </div>
+            </div>
+            <label class="sr-only" for="input">原始 Markdown 輸入區</label>
+            <textarea id="input" spellcheck="false" placeholder="在這裡貼上標準 Markdown……&#10;&#10;支援表格、標題、清單、引用、LaTeX 符號，轉換後即可直接貼進 Discord。" aria-describedby="input-count"></textarea>
+            <div class="panel-foot">
+              <output id="input-count" class="char-count" aria-live="off">0 字元</output>
+            </div>
+          </div>
+
+          <div class="convert-col" aria-hidden="false">
+            <button type="button" class="convert-btn" id="convert" title="轉換（Ctrl + Enter）" aria-label="轉換為 Discord Markdown">
+              <svg aria-hidden="true" viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h16m-6-6 6 6-6 6"/></svg>
+            </button>
+            <span class="convert-hint">Ctrl + Enter</span>
+          </div>
+
+          <div class="panel panel-output">
+            <div class="panel-head">
+              <h3><span class="dot dot-out" aria-hidden="true"></span>Discord Markdown</h3>
+              <div class="panel-tools">
+                <button type="button" class="btn btn-small btn-copy" id="copy-output">複製</button>
+                <button type="button" class="btn btn-small" id="download-output">下載 .md</button>
+              </div>
+            </div>
+            <label class="sr-only" for="output">轉換後的 Discord Markdown 輸出區</label>
+            <textarea id="output" readonly spellcheck="false" placeholder="轉換結果會出現在這裡……" aria-describedby="output-count"></textarea>
+            <div class="panel-foot">
+              <output id="output-count" class="char-count" aria-live="polite">0 字元</output>
+              <span id="limit-badge" class="limit-badge" role="status" hidden></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="options-row">
+          <label class="option-toggle">
+            <input type="checkbox" id="clamp-headings" checked>
+            <span class="toggle-track" aria-hidden="true"><span class="toggle-thumb"></span></span>
+            <span class="option-text"><strong>H4+ 標題自動降級為 H3</strong><small>Discord 僅支援 #、##、### 三級標題</small></span>
+          </label>
+          <p class="stats-bar" id="stats-bar" role="status" aria-live="polite"></p>
+        </div>
+        <p class="warning-bar" id="warning-bar" role="alert" hidden></p>
+      </div>
+    </section>
+
+    <section class="rules" id="rules">
+      <div class="container">
+        <div class="section-head">
+          <h2>轉換規則</h2>
+          <p>綜合 Discord 官方文件、社群轉換經驗與 Will 保哥的實戰經驗整理而成。</p>
+        </div>
+        <div class="rules-grid">
+          <article class="rule-card">
+            <div class="rule-icon" aria-hidden="true">📋</div>
+            <h3>表格 → 清單</h3>
+            <p>Discord 不支援 Markdown 表格。單列表格轉為「<strong>欄位</strong>：值」清單；多列表格自動轉為巢狀清單，中文表格使用全形冒號。</p>
+          </article>
+          <article class="rule-card">
+            <div class="rule-icon" aria-hidden="true">✂️</div>
+            <h3>移除分隔線</h3>
+            <p>Discord 不支援 <code>---</code>、<code>***</code>、<code>___</code> 等水平分隔線，轉換時整行移除。</p>
+          </article>
+          <article class="rule-card">
+            <div class="rule-icon" aria-hidden="true">🧹</div>
+            <h3>標題前後不加空白行</h3>
+            <p><code>#</code> 標題與上下行之間不留空白行，避免 Discord 產生多餘間距。</p>
+          </article>
+          <article class="rule-card">
+            <div class="rule-icon" aria-hidden="true">🧺</div>
+            <h3>清單前後不加空白行</h3>
+            <p>清單項目與前後內容緊貼，Discord 才會把它們視為連續的清單區塊。</p>
+          </article>
+          <article class="rule-card">
+            <div class="rule-icon" aria-hidden="true">💬</div>
+            <h3>引用前後不加空白行</h3>
+            <p><code>&gt;</code> 引用與上下內容緊貼，不插入空白行。</p>
+          </article>
+          <article class="rule-card">
+            <div class="rule-icon" aria-hidden="true">➡️</div>
+            <h3>LaTeX → Emoji / Unicode</h3>
+            <p>Discord 不支援 LaTeX。常見符號自動轉換：<code>$\rightarrow$</code> → ➡️、<code>$\alpha$</code> → α、<code>$\infty$</code> → ∞，支援 90+ 符號。</p>
+          </article>
+          <article class="rule-card rule-card-wide">
+            <div class="rule-icon" aria-hidden="true">🔽</div>
+            <h3>H4 以上標題整體降級</h3>
+            <p>Discord 僅支援到 <code>###</code>（H3）。<code>####</code> 以上的標題會被降級為 <code>###</code>，並在轉換統計中記錄警告，可在上方選項關閉。</p>
+          </article>
+          <article class="rule-card rule-card-wide">
+            <div class="rule-icon" aria-hidden="true">🛡️</div>
+            <h3>程式碼區塊原封不動</h3>
+            <p><code>```</code> 程式碼圍欄內容完全保留：分隔線、空白行、LaTeX 都不會被誤改，確保程式碼安全送達。</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="support" id="support">
+      <div class="container">
+        <div class="section-head">
+          <h2>Discord Markdown 語法支援速查</h2>
+          <p>依 Discord 官方文件與社群經驗（Discord 官方支援文件、Markdown Guide）整理。</p>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>語法</th><th>標準 Markdown</th><th>Discord</th><th>本工具處理方式</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>粗體 <code>**text**</code></td><td class="ok">✔</td><td class="ok">✔</td><td>保留</td></tr>
+              <tr><td>斜體 <code>*text*</code></td><td class="ok">✔</td><td class="ok">✔</td><td>保留</td></tr>
+              <tr><td>底線 <code>__text__</code></td><td class="no">✘</td><td class="ok">✔</td><td>保留</td></tr>
+              <tr><td>刪除線 <code>~~text~~</code></td><td class="ok">✔</td><td class="ok">✔</td><td>保留</td></tr>
+              <tr><td>行內程式碼 <code>`code`</code></td><td class="ok">✔</td><td class="ok">✔</td><td>保留</td></tr>
+              <tr><td>程式碼區塊 <code>```</code></td><td class="ok">✔</td><td class="ok">✔</td><td>原封不動</td></tr>
+              <tr><td>引用 <code>&gt;</code> / <code>&gt;&gt;&gt;</code></td><td class="ok">✔</td><td class="ok">✔</td><td>保留（壓緊空白行）</td></tr>
+              <tr><td>清單 <code>-</code> <code>*</code> <code>1.</code></td><td class="ok">✔</td><td class="ok">✔</td><td>保留（壓緊空白行）</td></tr>
+              <tr><td>連結 <code>[text](url)</code></td><td class="ok">✔</td><td class="ok">✔</td><td>保留</td></tr>
+              <tr><td>標題 <code>#</code></td><td class="ok">✔ H1–H6</td><td class="warn">⚠ 僅 H1–H3</td><td>H4+ 降級為 H3</td></tr>
+              <tr><td>表格 <code>| a | b |</code></td><td class="ok">✔</td><td class="no">✘</td><td>轉為清單</td></tr>
+              <tr><td>分隔線 <code>---</code></td><td class="ok">✔</td><td class="no">✘</td><td>移除</td></tr>
+              <tr><td>LaTeX <code>$\rightarrow$</code></td><td class="ok">✔</td><td class="no">✘</td><td>轉 Emoji / Unicode</td></tr>
+              <tr><td>圖片 <code>![alt](url)</code></td><td class="ok">✔</td><td class="no">✘</td><td>保留原樣（建議直接貼網址）</td></tr>
+              <tr><td>訊息長度</td><td>—</td><td class="warn">⚠ 2,000 字元</td><td>字數計數與超量提醒</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-inner">
+      <p class="footer-copy">© 2026 <a href="https://www.facebook.com/will.fans/" target="_blank" rel="noopener">Will 保哥的技術交流中心</a></p>
+      <p class="footer-note">本站以 <a href="https://opensource.org/license/mit" target="_blank" rel="noopener">MIT 授權條款</a>開源釋出</p>
+    </div>
+  </footer>
+
+  <!-- 範例輸入（Will 保哥提供的實際案例） -->
+  <script type="text/plain" id="sample-markdown">針對 **adjackbid** 在報表（2026-08-28 UTC）中以 269 次成功請求消耗高達 **108,588,007 Tokens** 的情況，經詳細分析 Raw Spend Logs 與請求特徵，結果與原因如下：
+
+---
+
+### 一、 使用的模型與 Token 消耗統計
+
+該用戶在當天**僅使用了 1 款模型**，且 100% 集中在 `openai/glm-5.2`：
+
+| 模型名稱 | 成功請求數 | Prompt Tokens (輸入) | Completion Tokens (輸出) | 總消耗 Tokens | 總花費 (USD) | 佔比 |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: |
+| **`openai/glm-5.2`** | 269 | 108,465,056 | 122,951 | **108,588,007** | **$152.39** | 100% |
+
+#### 關鍵數據特徵：
+* **輸入輸出極度失衡**：**Prompt Tokens 佔了 99.89%**（1.08 億 tokens），而模型產生的 Completion Tokens 僅 12.3 萬 tokens（佔 0.11%）。
+* **單次請求平均 Prompt**：高達 **403,216 tokens / request**（約 40 萬 tokens）。
+* **單次請求平均 Completion**：僅 **457 tokens / request**。
+* **Prompt 範圍**：最小 14,532 tokens、**最大達 539,400 tokens**、中位數為 456,780 tokens。
+
+---
+
+### 二、 為什麼 269 個 requests 會消耗超過 1 億 Tokens？（原因剖析）
+
+經過追蹤 269 筆 Request 的時間序與上下文長度，發現核心原因是：
+**「超長對話歷史/專案 Context 未重置（Context Bloat），並透過 Coding Agent 連續高頻發送」**。
+
+#### 1. 50 萬 Context 的巨型對話串重複傳送（佔比 96.6%）
+該用戶使用的是基於 `OpenAI/JS 5.20.1` 的客戶端（常見於 VS Code 擴充套件如 Roo Code、Cline、Cursor 或自建 Agent 腳本）：
+* **Session 1（台灣時間 08:29 ～ 09:30）**：
+ * 從當天第 1 個 request 開始，Prompt 長度就已經高達 **405,266 tokens**。
+ * 在 1 小時內連續發送了 **160 次請求**（平均每 22 秒一次），Prompt 從 405k 一路滾動累積到 486k。
+ * **光這 1 小時的 Session，就燒掉了 71,584,543 tokens（約 $100.42 USD）**。
+* **Session 8（台灣時間 23:23 ～ 00:29）**：
+ * 深夜繼續接續該對話，Prompt 從 496k 一路累積到 **539,400 tokens**（接近 54 萬 tokens）。
+ * 1 小時內發出 64 次請求，又消耗了 **33,318,108 tokens（約 $46.75 USD）**。
+
+> **小結**：光是這兩段超長對話串（合計 224 次請求），就佔了總消耗量的 **96.6%（104.9M tokens）**。
+
+#### 2. 歷史趨勢（持續性的 Context 肥大習慣）
+查看該用戶過去幾天的使用模式，已多次出現低請求數卻高 Token 消耗的狀況：
+* 2026-08-26：344 次請求 $\rightarrow$ 5,344 萬 tokens（平均 ~15.5 萬/req）
+* 2026-08-27：214 次請求 $\rightarrow$ 7,295 萬 tokens（平均 ~34.1 萬/req）
+* 2026-08-28：269 次請求 $\rightarrow$ **10,858 萬 tokens（平均 ~40.3 萬/req）**
+
+---
+
+### 三、 建議改善措施（Token Efficiency）
+
+1. **重置或分割對話（Clear Context / New Task）**：
+ * 在使用 AI 輔助編程工具時，完成單一階段任務應開啟新對話（New Task/Chat），避免單一對話滾動到 40~50 萬 tokens。
+2. **設定 Context 視窗上限 / 開啟自動壓縮（Context Compaction）**：
+ * 工具若支援對話壓縮（Summarization / Truncation），建議將 Context Window 上限適當壓低，或定期由 Agent 輸出摘要後重開 session。
+3. **精準餵入程式碼檔案**：
+ * 避免將整個 repo 或大型日誌/依賴目錄（如 `node_modules`）一次性丟進上下文。每次修改小範圍程式碼時，只引入相關檔案即可。</script>
+</body>
+</html>

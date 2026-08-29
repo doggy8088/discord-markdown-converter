@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Discord Markdown 轉換器">
+  <!-- Discord Markdown 轉換器 favicon（向量版本） MIT © 2026 Will 保哥 -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#6a78ff"/>
+      <stop offset="1" stop-color="#404eed"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="15" fill="url(#bg)"/>
+  <g fill="#ffffff">
+    <rect x="23" y="14" width="6.5" height="36" rx="3.25"/>
+    <rect x="34.5" y="14" width="6.5" height="36" rx="3.25"/>
+    <rect x="14" y="23" width="36" height="6.5" rx="3.25"/>
+    <rect x="14" y="34.5" width="36" height="6.5" rx="3.25"/>
+  </g>
+</svg>

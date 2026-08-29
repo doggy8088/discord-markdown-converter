@@ -1,0 +1,33 @@
+{
+  "name": "Discord Markdown 轉換器",
+  "short_name": "MD→Discord",
+  "description": "將標準 Markdown 轉換為 Discord 頻道適用的 Markdown 格式：表格轉清單、LaTeX 轉 Emoji、H4+ 標題自動降級。",
+  "lang": "zh-Hant",
+  "dir": "ltr",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0e1021",
+  "theme_color": "#5865F2",
+  "icons": [
+    {
+      "src": "android-chrome-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "android-chrome-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "android-chrome-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
