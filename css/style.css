@@ -467,8 +467,14 @@ html[data-theme="dark"] .icon-moon { display: none; }
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.65rem;
   min-width: 96px;
+}
+
+.convert-btn-wrap {
+  position: relative;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
 }
 
 .convert-btn {
@@ -490,16 +496,44 @@ html[data-theme="dark"] .icon-moon { display: none; }
 .convert-btn:active { transform: scale(0.95); }
 .convert-btn:focus-visible { outline: 3px solid color-mix(in srgb, var(--accent) 60%, transparent); outline-offset: 4px; }
 
-.convert-hint {
-  font-size: 0.72rem;
+.convert-btn-wrap .tooltip {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  padding: 0.38em 0.8em;
+  font-size: 0.76rem;
   font-weight: 600;
-  letter-spacing: 0.5px;
-  color: var(--muted);
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  padding: 0.22em 0.8em;
+  letter-spacing: 0.3px;
+  color: var(--text);
+  background: var(--surface-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow);
   white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity var(--transition), transform var(--transition), visibility var(--transition);
+  z-index: 20;
+}
+
+.convert-btn-wrap .tooltip::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 5px;
+  border-style: solid;
+  border-color: var(--border-strong) transparent transparent transparent;
+}
+
+.convert-btn-wrap:hover .tooltip,
+.convert-btn:focus-visible + .tooltip {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(0);
 }
 
 /* 選項與統計 */

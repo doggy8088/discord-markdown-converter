@@ -146,7 +146,7 @@
       <div class="container">
         <div class="section-head">
           <h2>開始轉換</h2>
-          <p>左邊貼上標準 Markdown，按中間按鈕轉換，右邊即可複製到 Discord。</p>
+          <p>左邊貼上標準 Markdown 即會自動轉換（亦可按按鈕或快捷鍵），右邊即可複製到 Discord。</p>
         </div>
 
         <div class="converter-grid">
@@ -166,10 +166,12 @@
           </div>
 
           <div class="convert-col" aria-hidden="false">
-            <button type="button" class="convert-btn" id="convert" title="轉換（Ctrl + Enter）" aria-label="轉換為 Discord Markdown">
-              <svg aria-hidden="true" viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h16m-6-6 6 6-6 6"/></svg>
-            </button>
-            <span class="convert-hint">Ctrl + Enter</span>
+            <div class="convert-btn-wrap">
+              <button type="button" class="convert-btn" id="convert" aria-label="轉換（Ctrl + Enter）" aria-describedby="convert-tooltip">
+                <svg aria-hidden="true" viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h16m-6-6 6 6-6 6"/></svg>
+              </button>
+              <span class="tooltip" id="convert-tooltip" role="tooltip">轉換（Ctrl + Enter）</span>
+            </div>
           </div>
 
           <div class="panel panel-output">

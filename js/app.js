@@ -21,7 +21,25 @@
   var inputCount = $("#input-count");
   var outputCount = $("#output-count");
   var limitBadge = $("#limit-badge");
+  var convertTooltip = $("#convert-tooltip");
   var toastEl = null;
+  var debounceTimer = null;
+
+  /* ---------- 作業系統快捷鍵偵測 ---------- */
+  var isMac = false;
+  try {
+    if (navigator.userAgentData && navigator.userAgentData.platform) {
+      isMac = /Mac/i.test(navigator.userAgentData.platform);
+    } else {
+      isMac = /(Mac|iPhone|iPod|iPad)/i.test(navigator.platform || navigator.userAgent || "");
+    }
+  } catch (e) {
+    isMac = /(Mac|iPhone|iPod|iPad)/i.test(navigator.userAgent || "");
+  }
+  var shortcutText = isMac ? "Cmd + Enter" : "Ctrl + Enter";
+  var tooltipText = "轉換（" + shortcutText + "）";
+  if (convertTooltip) convertTooltip.textContent = tooltipText;
+  if (convertBtn) convertBtn.setAttribute("aria-label", tooltipText);
 
   /* ---------- 主題切換 ---------- */
   function currentTheme() {
@@ -42,17 +60,35 @@
   } catch (e) { /* 忽略 */ }
   clampEl.addEventListener("change", function () {
     try { localStorage.setItem("dmc-clamp", clampEl.checked ? "1" : "0"); } catch (e) { /* 忽略 */ }
-    if (inputEl.value.trim()) doConvert();
+    if (inputEl.value.trim()) {
+      clearTimeout(debounceTimer);
+      doConvert();
+    }
   });
 
   /* ---------- 轉換 ---------- */
   function doConvert() {
+    clearTimeout(debounceTimer);
+    if (!inputEl.value.trim()) {
+      outputEl.value = "";
+      statsBar.textContent = "";
+      warningBar.hidden = true;
+      updateCounters();
+      return;
+    }
     var result = DiscordMarkdown.convert(inputEl.value, {
       clampHeadings: clampEl.checked
     });
     outputEl.value = result.markdown;
     renderStats(result.stats);
     updateCounters();
+  }
+
+  function scheduleConvert() {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(function () {
+      doConvert();
+    }, 500);
   }
 
   function renderStats(s) {
@@ -101,16 +137,30 @@
     }
   }
 
-  inputEl.addEventListener("input", updateCounters);
+  inputEl.addEventListener("input", function () {
+    updateCounters();
+    if (!inputEl.value.trim()) {
+      clearTimeout(debounceTimer);
+      outputEl.value = "";
+      statsBar.textContent = "";
+      warningBar.hidden = true;
+      updateCounters();
+      return;
+    }
+    scheduleConvert();
+  });
 
-  convertBtn.addEventListener("click", doConvert);
+  convertBtn.addEventListener("click", function () {
+    doConvert();
+    if (inputEl.value.trim()) toast("已轉換 ✔");
+  });
 
   /* Ctrl / Cmd + Enter 快速轉換 */
   document.addEventListener("keydown", function (e) {
     if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
       e.preventDefault();
       doConvert();
-      toast("已轉換 ✔");
+      if (inputEl.value.trim()) toast("已轉換 ✔");
     }
   });
 
