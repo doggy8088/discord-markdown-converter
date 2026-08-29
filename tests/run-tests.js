@@ -97,19 +97,61 @@ check("替代分隔線樣式", convert("上文\n\n* * *\n\n- - -\n\n___\n\n下�
 /* 11. 僅表頭的表格 */
 check("僅表頭的表格", convert("| A | B |\n|---|---|").markdown, "");
 
-/* 12. 統計數據 */
-const stats = convert("a\n\n---\n\n### H\n\n- x\n\n> q\n\nb")["stats"];
+/* 12. 移除 file:// 本地檔案連結（規則 8） */
+check(
+  "file:// 連結轉換為行內程式碼文字",
+  convert("[`src/clients.rs`](file:///Users/will/projects/zerotype-win/src/clients.rs#L1218)").markdown,
+  "`src/clients.rs`"
+);
+check(
+  "file:// 純文字連結",
+  convert("[clients.rs](file:///C:/projects/zerotype/src/clients.rs)").markdown,
+  "clients.rs"
+);
+check(
+  "file:// localhost 與尖括號語法",
+  convert("[hosts](file://localhost/etc/hosts) 與 [test](<file:///Users/will/test.rs>)").markdown,
+  "hosts 與 test"
+);
+check(
+  "file:// 連結含標題屬性",
+  convert('[clients.rs](file:///path/test.rs "檔案標題") 與 [app.rs](file:///path/app.rs \'單引號\')').markdown,
+  "clients.rs 與 app.rs"
+);
+check(
+  "混合網頁連結與 file:// 連結",
+  convert("參考 [官方網站](https://example.com) 與 [`src/main.rs`](file:///path/to/main.rs)").markdown,
+  "參考 [官方網站](https://example.com) 與 `src/main.rs`"
+);
+check(
+  "連續 file:// 連結",
+  convert("[`a.rs`](file:///a)[`b.rs`](file:///b)").markdown,
+  "`a.rs``b.rs`"
+);
+check(
+  "表格中包含 file:// 連結",
+  convert("| 檔案 | 說明 |\n|---|---|\n| [`src/clients.rs`](file:///path/src/clients.rs) | 用戶端 |").markdown,
+  "- **檔案**：`src/clients.rs`\n- **說明**：用戶端"
+);
+check(
+  "程式碼圍欄內的 file:// 連結不受影響",
+  convert("```\n[`src/clients.rs`](file:///path/src/clients.rs)\n```").markdown,
+  "```\n[`src/clients.rs`](file:///path/src/clients.rs)\n```"
+);
+
+/* 13. 統計數據 */
+const stats = convert("a\n\n---\n\n### H\n\n- x\n\n> q\n\n[`a.rs`](file:///a)\n\nb")["stats"];
 check(
   "統計數據",
   JSON.stringify(stats),
-  JSON.stringify({ tables: 0, hr: 1, blanks: 5, headingsClamped: 0, latex: 0 })
+  JSON.stringify({ tables: 0, hr: 1, blanks: 5, headingsClamped: 0, latex: 0, fileLinks: 1 })
 );
 
-/* 13. 黃金測試的統計數據 */
+/* 14. 黃金測試的統計數據 */
 check(
   "範例統計數據",
   JSON.stringify(result.stats),
-  JSON.stringify({ tables: 1, hr: 3, blanks: 14, headingsClamped: 3, latex: 3 })
+  JSON.stringify({ tables: 1, hr: 3, blanks: 14, headingsClamped: 3, latex: 3, fileLinks: 0 })
 );
 
 console.log(failures === 0 ? "\n全部測試通過 ✔" : `\n${failures} 項測試失敗 ✘`);

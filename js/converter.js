@@ -10,6 +10,7 @@
  *   5. 引用（>）前後不加空白行
  *   6. LaTeX 數學語法（$\rightarrow$ 等）轉換為 Emoji 或 Unicode 符號（Discord 不支援）
  *   7. H4 以上標題整體降級為 ###（Discord 僅支援 H1–H3），可統計警告數量
+ *   8. 移除 file:// 本地檔案連結，僅保留連結文字（Discord 不支援 file:// 協定連結）
  *
  * MIT License © 2026 Will 保哥
  */
@@ -187,6 +188,17 @@
     return out;
   }
 
+  /* 移除 file:// 本地檔案連結，僅保留連結文字（Discord 不支援 file:// 協定） */
+  var FILE_LINK_RE = /(?<![!\\])\[((?:`[^`]*`|\[[^\]]*\]|[^\[\]])*)\]\(\s*(?:<file:\/{1,3}[^>]*>|file:\/{1,3}(?:[^\s()]+|\([^\s()]+\))*)(?:\s+(?:"[^"]*"|'[^']*'|\([^)]*\)))?\s*\)/gi;
+
+  function replaceFileLinks(line, stats) {
+    if (line.toLowerCase().indexOf("file:") === -1) return line;
+    return line.replace(FILE_LINK_RE, function (match, text) {
+      stats.fileLinks += 1;
+      return text;
+    });
+  }
+
   function clampHeading(line) {
     var m = /^( {0,3})(#{1,6})(\s)/.exec(line);
     if (m && m[2].length > 3) return m[1] + "###" + line.slice(m[0].length - 1);
@@ -197,16 +209,16 @@
    * 將標準 Markdown 轉換為 Discord 適用的 Markdown。
    * @param {string} input 原始 Markdown 文字
    * @param {object} [options] { clampHeadings: boolean } 是否將 H4 以上標題降級為 ###（預設 true）
-   * @returns {{ markdown: string, stats: { tables: number, hr: number, blanks: number, headingsClamped: number, latex: number } }}
+   * @returns {{ markdown: string, stats: { tables: number, hr: number, blanks: number, headingsClamped: number, latex: number, fileLinks: number } }}
    */
   function convert(input, options) {
     var opts = options || {};
     if (opts.clampHeadings === undefined) opts.clampHeadings = true; /* Discord 僅支援 H1–H3 */
-    var stats = { tables: 0, hr: 0, blanks: 0, headingsClamped: 0, latex: 0 };
+    var stats = { tables: 0, hr: 0, blanks: 0, headingsClamped: 0, latex: 0, fileLinks: 0 };
     var text = String(input == null ? "" : input).replace(/\r\n?/g, "\n").replace(/^\uFEFF/, "").replace(/\n+$/, "");
     var lines = text.split("\n");
 
-    /* Pass 1：表格 → 清單、移除水平分隔線、（選配）標題壓縮 */
+    /* Pass 1：表格 → 清單、移除水平分隔線、（選配）標題壓縮、移除 file:// 連結 */
     var transformed = [];
     var inFence = false;
     for (var i = 0; i < lines.length; i++) {
@@ -215,6 +227,7 @@
       if (inFence) { transformed.push(line); continue; }
 
       line = replaceLatexLine(line, stats); /* LaTeX → Emoji / Unicode */
+      line = replaceFileLinks(line, stats); /* 移除 file:// 連結，僅保留文字 */
 
       if (isHR(line)) { stats.hr += 1; continue; }
 
@@ -231,7 +244,8 @@
         var rows = [];
         var j = i + 2;
         while (j < lines.length && !isBlank(lines[j]) && lines[j].indexOf("|") !== -1 && !isFence(lines[j])) {
-          rows.push(splitCells(lines[j]));
+          var rowLine = replaceFileLinks(replaceLatexLine(lines[j], stats), stats);
+          rows.push(splitCells(rowLine));
           j++;
         }
         Array.prototype.push.apply(transformed, convertTable(headers, rows, stats));

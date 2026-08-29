@@ -62,6 +62,7 @@
     if (s.blanks) parts.push("清除空白行 × " + s.blanks);
     if (s.latex) parts.push("LaTeX 符號轉換 × " + s.latex);
     if (s.headingsClamped) parts.push("標題降級 × " + s.headingsClamped);
+    if (s.fileLinks) parts.push("移除 file:// 連結 × " + s.fileLinks);
     statsBar.textContent = parts.length ? "轉換完成：" + parts.join("、") : "轉換完成：內容已符合 Discord 格式";
 
     if (s.headingsClamped > 0) {

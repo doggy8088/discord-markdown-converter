@@ -6,7 +6,7 @@
   <title>Discord Markdown 轉換器 — 一鍵將 Markdown 轉為 Discord 支援格式</title>
 
   <!-- SEO -->
-  <meta name="description" content="將標準 Markdown 轉換為 Discord 頻道適用的 Markdown 格式：表格自動轉清單、移除水平分隔線、清理標題／清單／引用前後的空白行、LaTeX 符號轉 Emoji，並自動降級 H4 以上標題。支援深色與淺色主題。">
+  <meta name="description" content="將標準 Markdown 轉換為 Discord 頻道適用的 Markdown 格式：表格自動轉清單、移除水平分隔線、清理標題／清單／引用前後的空白行、LaTeX 符號轉 Emoji、移除 file:// 連結僅保留文字，並自動降級 H4 以上標題。支援深色與淺色主題。">
   <meta name="keywords" content="Discord, Markdown, 轉換器, Converter, Discord Markdown, 表格轉清單, LaTeX, 訊息格式, Markdown to Discord">
   <meta name="author" content="Will 保哥">
   <meta name="robots" content="index, follow">
@@ -19,7 +19,7 @@
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Discord Markdown 轉換器">
   <meta property="og:title" content="Discord Markdown 轉換器 — 一鍵將 Markdown 轉為 Discord 支援格式">
-  <meta property="og:description" content="表格自動轉清單、移除分隔線、LaTeX 轉 Emoji、H4+ 標題自動降級，產出可直接貼進 Discord 頻道的 Markdown。">
+  <meta property="og:description" content="表格自動轉清單、移除分隔線、LaTeX 轉 Emoji、移除 file:// 連結、H4+ 標題自動降級，產出可直接貼進 Discord 頻道的 Markdown。">
   <meta property="og:url" content="https://discord-markdown-converter.gh.miniasp.com/">
   <meta property="og:image" content="https://discord-markdown-converter.gh.miniasp.com/assets/img/og-image.png">
   <meta property="og:image:type" content="image/png">
@@ -31,7 +31,7 @@
   <!-- Twitter Card -->
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Discord Markdown 轉換器">
-  <meta name="twitter:description" content="一鍵將標準 Markdown 轉為 Discord 支援格式：表格轉清單、LaTeX 轉 Emoji、H4+ 自動降級。">
+  <meta name="twitter:description" content="一鍵將標準 Markdown 轉為 Discord 支援格式：表格轉清單、LaTeX 轉 Emoji、移除 file:// 連結、H4+ 自動降級。">
   <meta name="twitter:image" content="https://discord-markdown-converter.gh.miniasp.com/assets/img/og-image.png">
   <meta name="twitter:image:alt" content="Markdown 文件轉換為 Discord 聊天訊息的現代扁平插畫">
 
@@ -56,7 +56,7 @@
     "@type": "WebApplication",
     "name": "Discord Markdown 轉換器",
     "alternateName": "Markdown to Discord Converter",
-    "description": "將標準 Markdown 轉換為 Discord 頻道適用的 Markdown 格式：表格自動轉清單、移除水平分隔線、清理空白行、LaTeX 符號轉 Emoji、H4 以上標題自動降級。",
+    "description": "將標準 Markdown 轉換為 Discord 頻道適用的 Markdown 格式：表格自動轉清單、移除水平分隔線、清理空白行、LaTeX 符號轉 Emoji、移除 file:// 連結僅保留文字、H4 以上標題自動降級。",
     "applicationCategory": "DeveloperApplication",
     "operatingSystem": "Any",
     "inLanguage": "zh-Hant",
@@ -118,12 +118,13 @@
         <div class="hero-copy">
           <p class="hero-kicker">Markdown → Discord</p>
           <h1>把 Markdown 變成<br><span class="gradient-text">Discord 能吃的格式</span></h1>
-          <p class="hero-lead">貼上任何標準 Markdown，自動轉成 Discord 頻道可用的格式：表格變清單、LaTeX 變 Emoji、分隔線與多餘空白行全部清乾淨，直接複製貼進頻道。</p>
+          <p class="hero-lead">貼上任何標準 Markdown，自動轉成 Discord 頻道可用的格式：表格變清單、LaTeX 變 Emoji、移除不支援的 file:// 連結、分隔線與多餘空白行全部清乾淨，直接複製貼進頻道。</p>
           <ul class="hero-chips" aria-label="主要功能">
             <li>📋 表格 → 清單</li>
             <li>✂️ 移除 <code>---</code> 分隔線</li>
             <li>🧹 清理空白行</li>
             <li>➡️ LaTeX → Emoji</li>
+            <li>🔗 移除 <code>file://</code> 連結</li>
             <li>🔽 H4+ 自動降級</li>
             <li>🌙 深色／淺色主題</li>
           </ul>
@@ -158,7 +159,7 @@
               </div>
             </div>
             <label class="sr-only" for="input">原始 Markdown 輸入區</label>
-            <textarea id="input" spellcheck="false" placeholder="在這裡貼上標準 Markdown……&#10;&#10;支援表格、標題、清單、引用、LaTeX 符號，轉換後即可直接貼進 Discord。" aria-describedby="input-count"></textarea>
+            <textarea id="input" spellcheck="false" placeholder="在這裡貼上標準 Markdown……&#10;&#10;支援表格、標題、清單、引用、LaTeX 符號、file:// 連結清理，轉換後即可直接貼進 Discord。" aria-describedby="input-count"></textarea>
             <div class="panel-foot">
               <output id="input-count" class="char-count" aria-live="off">0 字元</output>
             </div>
@@ -237,7 +238,12 @@
             <h3>LaTeX → Emoji / Unicode</h3>
             <p>Discord 不支援 LaTeX。常見符號自動轉換：<code>$\rightarrow$</code> → ➡️、<code>$\alpha$</code> → α、<code>$\infty$</code> → ∞，支援 90+ 符號。</p>
           </article>
-          <article class="rule-card rule-card-wide">
+          <article class="rule-card">
+            <div class="rule-icon" aria-hidden="true">🔗</div>
+            <h3>移除 file:// 連結</h3>
+            <p>Discord 不支援本地 <code>file://</code> 協定連結。如 <code>[`src/clients.rs`](file:///path)</code> 會自動去除連結，僅保留文字 <code>`src/clients.rs`</code>。</p>
+          </article>
+          <article class="rule-card">
             <div class="rule-icon" aria-hidden="true">🔽</div>
             <h3>H4 以上標題整體降級</h3>
             <p>Discord 僅支援到 <code>###</code>（H3）。<code>####</code> 以上的標題會被降級為 <code>###</code>，並在轉換統計中記錄警告，可在上方選項關閉。</p>
@@ -245,7 +251,7 @@
           <article class="rule-card rule-card-wide">
             <div class="rule-icon" aria-hidden="true">🛡️</div>
             <h3>程式碼區塊原封不動</h3>
-            <p><code>```</code> 程式碼圍欄內容完全保留：分隔線、空白行、LaTeX 都不會被誤改，確保程式碼安全送達。</p>
+            <p><code>```</code> 程式碼圍欄內容完全保留：分隔線、空白行、LaTeX、file:// 連結都不會被誤改，確保程式碼安全送達。</p>
           </article>
         </div>
       </div>
@@ -271,7 +277,8 @@
               <tr><td>程式碼區塊 <code>```</code></td><td class="ok">✔</td><td class="ok">✔</td><td>原封不動</td></tr>
               <tr><td>引用 <code>&gt;</code> / <code>&gt;&gt;&gt;</code></td><td class="ok">✔</td><td class="ok">✔</td><td>保留（壓緊空白行）</td></tr>
               <tr><td>清單 <code>-</code> <code>*</code> <code>1.</code></td><td class="ok">✔</td><td class="ok">✔</td><td>保留（壓緊空白行）</td></tr>
-              <tr><td>連結 <code>[text](url)</code></td><td class="ok">✔</td><td class="ok">✔</td><td>保留</td></tr>
+              <tr><td>網頁連結 <code>[text](https://...)</code></td><td class="ok">✔</td><td class="ok">✔</td><td>保留</td></tr>
+              <tr><td>本地檔案連結 <code>[text](file://...)</code></td><td class="ok">✔</td><td class="no">✘</td><td>移除連結，僅保留文字</td></tr>
               <tr><td>標題 <code>#</code></td><td class="ok">✔ H1–H6</td><td class="warn">⚠ 僅 H1–H3</td><td>H4+ 降級為 H3</td></tr>
               <tr><td>表格 <code>| a | b |</code></td><td class="ok">✔</td><td class="no">✘</td><td>轉為清單</td></tr>
               <tr><td>分隔線 <code>---</code></td><td class="ok">✔</td><td class="no">✘</td><td>移除</td></tr>
