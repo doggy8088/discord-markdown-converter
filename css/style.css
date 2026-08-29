@@ -182,7 +182,7 @@ code {
   align-items: center;
   gap: 0.35rem;
 }
-.header-nav a {
+.header-nav .nav-link {
   color: var(--muted);
   font-size: 0.92rem;
   font-weight: 500;
@@ -190,22 +190,26 @@ code {
   border-radius: 999px;
   transition: color var(--transition), background-color var(--transition);
 }
-.header-nav a:hover { color: var(--text); background: var(--surface-2); text-decoration: none; }
+.header-nav .nav-link:hover { color: var(--text); background: var(--surface-2); text-decoration: none; }
 
-.theme-toggle {
+.theme-toggle,
+.github-link {
   display: grid;
   place-items: center;
   width: 40px; height: 40px;
-  margin-left: 0.4rem;
+  padding: 0;
   border: 1px solid var(--border);
   border-radius: 50%;
   background: var(--surface-2);
   color: var(--text);
   cursor: pointer;
-  transition: transform var(--transition), background-color var(--transition), border-color var(--transition);
+  transition: transform var(--transition), background-color var(--transition), border-color var(--transition), color var(--transition);
 }
-.theme-toggle:hover { transform: rotate(18deg); border-color: var(--accent); }
-.theme-toggle:active { transform: scale(0.92); }
+.theme-toggle { margin-left: 0.4rem; }
+.theme-toggle:hover { transform: rotate(18deg); border-color: var(--accent); color: var(--accent); }
+.github-link:hover { transform: translateY(-2px); border-color: var(--accent); color: var(--accent); text-decoration: none; }
+.theme-toggle:active,
+.github-link:active { transform: scale(0.92); }
 
 html[data-theme="light"] .icon-sun { display: none; }
 html[data-theme="dark"] .icon-moon { display: none; }
@@ -737,7 +741,7 @@ html[data-theme="dark"] .icon-moon { display: none; }
 @media (max-width: 560px) {
   .container { width: min(1180px, 100% - 1.6rem); }
   .hero { padding-top: 2.8rem; }
-  .header-nav a:not(.theme-toggle) { display: none; }
+  .header-nav .nav-link { display: none; }
   .panel textarea { min-height: 300px; }
   .options-row { flex-direction: column; align-items: flex-start; }
   .footer-inner { flex-direction: column; text-align: center; }
