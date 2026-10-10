@@ -192,6 +192,13 @@ const dirty = [
   ["link-scheme", "[s](#intro)"],
   ["link-scheme", "<mailto:user@example.com>"],
   ["link-scheme", "<ftp://example.com>"],
+  ["link-scheme", "[x]()"],
+  ["link-scheme", "[x]( )"],
+  ["plus-list", "+ item"],
+  ["indented-heading", "  # heading"],
+  ["quoted-table", "> | A | B |\n> |---|---|\n> | 1 | 2 |"],
+  ["image", "```foo```\n![x](https://x)"],
+  ["task-list", "\uFEFF- [ ] todo"],
   ["reference-link", "[guide][docs]"],
   ["reference-link", "[guide][]"],
   ["reference-link", "[docs]: https://example.com"],
@@ -222,6 +229,9 @@ check("圍欄結尾長度不短於開頭", convert("````\n```\n---\n````").markd
 check("行內程式碼內的 LaTeX 與 file:// 不改寫",
   convert("`$\\alpha$` 與 `[a](file:///x)` 但 $\\alpha$ 會轉").markdown, "`$\\alpha$` 與 `[a](file:///x)` 但 α 會轉");
 check("逸出反引號不視為行內程式碼", convert("\\`$\\alpha$\\`").markdown, "\\`α\\`");
+check("同一行閉合的反引號不是圍欄", convert("```foo```\n\n---\n\n後文").markdown, "```foo```\n\n後文");
+check("標題去掉行首縮排", convert("  ## 標題\n   #### 深").markdown, "## 標題\n### 深");
+check("關閉降級時仍去掉標題縮排", convert("  #### 深", { clampHeadings: false }).markdown, "#### 深");
 check("引用內的分隔線移除", convert("> 引用\n> ---\n> 後文").markdown, "> 引用\n> 後文");
 check("引用內的分隔線計入 hr", convert("> ---").stats.hr, 1);
 check("段落與圍欄間保留的空白行不計入 blanks",

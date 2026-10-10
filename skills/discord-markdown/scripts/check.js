@@ -6,7 +6,8 @@
  * 1. 以轉換器跑一次草稿：任一 stat 非 0，代表草稿仍含轉換器會改寫的語法。
  * 2. 對「原始草稿」逐行檢查轉換器不會處理的語法（行號對應草稿；程式碼圍欄與
  *    行內程式碼不檢查）：圖片、任務清單、HTML 標籤（可跨行）、~~~ 圍欄、註腳、巢狀引用、定義清單、
- *    Setext 標題、非 http(s) 連結、參考式連結、殘留 LaTeX、CJK 標籤後的半形冒號。
+ *    Setext 標題、引用內表格、+ 清單標記、縮排標題、非 http(s) 連結、參考式連結、
+ *    殘留 LaTeX、CJK 標籤後的半形冒號。
  * 3. 轉換結果長度不得超過 2,000 字元。
  * 結束碼 0 = 全部通過；1 = 有待修正項目（逐行列出）。
  */
@@ -19,6 +20,7 @@ const LIMIT = 2000;
 /* 與 converter.js 的 CJK_RE 相同範圍（含假名） */
 const CJK = "\\u3400-\\u4DBF\\u4E00-\\u9FFF\\uF900-\\uFAFF\\u3040-\\u30FF";
 const FENCE_OPEN_RE = /^ {0,3}(`{3,}|~{3,})/;
+const QUOTE_PREFIX_RE = /^ *(?:>\s*)+/;
 const LIST_RE = /^ {0,3}(?:[-*+]|\d{1,9}[.)])(?:\s|$)/;
 const BLOCK_RE = /^ {0,3}(?:#{1,6}(?:\s|$)|>)/;
 
@@ -29,9 +31,11 @@ const LINE_CHECKS = [
   { id: "footnote", re: /\[\^[^\]]+\]/, msg: "註腳 [^n] 不支援；改為行內說明或括號" },
   { id: "nested-quote", re: /^ *>\s*>(?!>)/, msg: "巢狀引用 > > / >> 不支援；改為單層 > 或 >>>" },
   { id: "definition-list", re: /^ {0,3}:\s+\S/, msg: "定義清單（: 開頭的定義行）不支援；改為「**詞**：說明」" },
+  { id: "plus-list", re: /^ *(?:>\s*)*\+\s+\S/, msg: "Discord 清單標記只支援 - 與 *；+ 會原樣顯示" },
+  { id: "indented-heading", re: /^ +#{1,6}\s/, msg: "標題的 # 必須在行首，不可縮排" },
   /* 一般連結（非圖片）目的地必須以 http:// 或 https:// 開頭；相對路徑、#錨點、其他協定一律不可用。
      自動連結 <scheme:…> 亦同；<t:…>、<a:…> 等單字母前綴與 <id:…> 為 Discord 語法，不視為協定 */
-  { id: "link-scheme", re: /(?<!!)\[[^\]]*\]\(\s*<?(?!https?:\/\/)[^)\s>]|<(?!https?:\/\/|id:)[a-zA-Z][a-zA-Z0-9+.-]+:[^>\s]*>/i, msg: "連結僅支援 http(s)://；相對路徑、錨點與其他協定（含 <mailto:…> 等自動連結）改為純文字或行內程式碼" },
+  { id: "link-scheme", re: /(?<!!)\[[^\]]*\]\(\s*(?:\)|<?(?!https?:\/\/)[^)\s>])|<(?!https?:\/\/|id:)[a-zA-Z][a-zA-Z0-9+.-]+:[^>\s]*>/i, msg: "連結僅支援 http(s)://；相對路徑、錨點與其他協定（含 <mailto:…> 等自動連結）改為純文字或行內程式碼" },
   /* 參考式連結 [text][ref]、[text][] 與其定義行 [ref]: url（涵蓋捷徑式 [ref]）；[^n]: 為註腳，另由 footnote 處理 */
   { id: "reference-link", re: /(?<!!)\[[^\]]*\]\[[^\]]*\]|^ {0,3}\[[^\]^][^\]]*\]:\s+\S/, msg: "參考式連結 [text][ref] 與 [ref]: url 定義不支援；改為行內 [text](https://url)" },
   /* $$…$$ 一律；$\cmd；含 \ ^ _ { } 的 $…$；或不含空白且含 + = * / 的 $…$（如 $x+y$、$2+2=4$）。
@@ -57,14 +61,26 @@ function isSetextUnderline(line, prev) {
   return /^ {0,3}=+\s*$/.test(line) || /^ {0,3}-+\s*$/.test(line);
 }
 
+function fenceOpen(raw) {
+  const m = FENCE_OPEN_RE.exec(raw);
+  if (!m) return null;
+  /* ```foo``` 這種同一行就閉合的是行內程式碼，不是圍欄 */
+  if (m[1][0] === "`" && raw.slice(m[0].length).includes("`")) return null;
+  return m;
+}
+
+function isTableDelimiter(t) {
+  return t.includes("-") && t.includes("|") && /^[|:\-\s]+$/.test(t);
+}
+
 function lint(source) {
   const findings = [];
-  const lines = source.split("\n");
+  const lines = source.replace(/^\uFEFF/, "").split("\n"); /* BOM 只在第 1 行，去除不影響行號 */
   const masked = []; /* 遮蔽圍欄與行內程式碼後的各行，供跨行檢查 */
   let fence = null; /* { ch, len } */
   let prev = null;
   lines.forEach((raw, i) => {
-    const m = FENCE_OPEN_RE.exec(raw);
+    const m = fenceOpen(raw);
     if (fence) {
       /* 只有同字元且長度不短於開頭者才算結尾 */
       if (m && m[1][0] === fence.ch && m[1].length >= fence.len && raw.trim() === m[1].trim()) fence = null;
@@ -83,6 +99,11 @@ function lint(source) {
 
     if (isSetextUnderline(raw, prev)) {
       findings.push({ line: i + 1, id: "setext-heading", msg: "底線式標題（=== / ---）不支援；改為 #、##、###", text: raw.trim() });
+    }
+    /* 引用內的表格：轉換器只處理頂層表格，> | a | b | 會原樣送出 */
+    if (prev != null && QUOTE_PREFIX_RE.test(raw) && isTableDelimiter(raw.replace(QUOTE_PREFIX_RE, "").trim()) &&
+        QUOTE_PREFIX_RE.test(prev) && prev.replace(QUOTE_PREFIX_RE, "").includes("|")) {
+      findings.push({ line: i, id: "quoted-table", msg: "引用內的表格不會轉換也不支援；移出引用或改為清單", text: prev.trim() });
     }
     const line = maskInlineCode(raw);
     masked.push(line);

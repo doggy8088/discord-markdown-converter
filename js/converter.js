@@ -39,7 +39,10 @@
   /* 圍欄開頭：回傳 { ch, len }；結尾須同字元且長度不短於開頭、整行只有圍欄字元 */
   function fenceOpen(line) {
     var m = FENCE_RE.exec(line);
-    return m ? { ch: m[1][0], len: m[1].length } : null;
+    if (!m) return null;
+    /* 反引號圍欄的資訊字串不得含反引號（```foo``` 是同一行的行內程式碼，不是圍欄） */
+    if (m[1][0] === "`" && line.slice(m[0].length).indexOf("`") !== -1) return null;
+    return { ch: m[1][0], len: m[1].length };
   }
   function fenceCloses(line, fence) {
     var m = FENCE_RE.exec(line);
@@ -248,10 +251,12 @@
     });
   }
 
+  /* 標題：去掉行首縮排（Discord 要求 # 在行首），H4+ 降級為 ### */
   function clampHeading(line) {
     var m = /^( {0,3})(#{1,6})(\s)/.exec(line);
-    if (m && m[2].length > 3) return m[1] + "###" + line.slice(m[0].length - 1);
-    return line;
+    if (!m) return line;
+    var hashes = m[2].length > 3 ? "###" : m[2];
+    return hashes + line.slice(m[0].length - 1);
   }
 
   /**
@@ -281,10 +286,14 @@
 
       if (isHR(line)) { stats.hr += 1; continue; }
 
-      if (isHeading(line) && opts.clampHeadings) {
-        var clamped = clampHeading(line);
-        if (clamped !== line) stats.headingsClamped += 1;
-        transformed.push(clamped);
+      if (isHeading(line)) {
+        if (opts.clampHeadings) {
+          var clamped = clampHeading(line);
+          if (/^ {0,3}#{4,}\s/.test(line)) stats.headingsClamped += 1;
+          transformed.push(clamped);
+        } else {
+          transformed.push(line.replace(/^ {0,3}#/, "#"));
+        }
         continue;
       }
 
