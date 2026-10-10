@@ -78,8 +78,9 @@
   function isBlank(line) { return line.trim() === ""; }
   function isSpecial(line) { return isHeading(line) || isListItem(line) || isQuote(line); }
 
+  /* 水平分隔線；引用內的 > --- 亦視為分隔線（Discord 同樣不支援） */
   function isHR(line) {
-    var t = line.trim();
+    var t = line.trim().replace(/^(?:>\s*)+/, "").trim();
     return !!t && t.indexOf("|") === -1 && HR_RE.test(t);
   }
 

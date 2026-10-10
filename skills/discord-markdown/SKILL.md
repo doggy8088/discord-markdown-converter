@@ -17,7 +17,7 @@ Rules 1 to 5, and the `file://` case of rule 6, are transformations that the bun
 | Subtext (small grey line) | `-# text` |
 | Bold / italic / underline / strike | `**b**`, `*i*`, `__u__`, `~~s~~` |
 | Spoiler | `\|\|hidden\|\|` |
-| Inline code / code block | `` `code` ``, fenced ```` ```lang ```` block |
+| Inline code / code block | `` `code` ``, fenced ```` ```lang ```` block (backticks only; `~~~` is not a fence in Discord) |
 | Quote | `> line` (single) or `>>> ` (rest of message) |
 | Bullet list | `- item` or `* item`; nest with exactly two leading spaces |
 | Numbered list | `1. item` |
@@ -30,7 +30,7 @@ Each rule names what to write instead of the unsupported form.
 1. **Tables become lists.** Discord has no tables. A one-row table becomes a flat list of `**Header**: value` items. A multi-row table becomes a nested list: the first column is the top-level item, the remaining columns are its sub-items indented by two spaces. Move a parenthesised unit out of the bold: `**總花費**（USD）：$152.39`.
 2. **Headings stop at `###`.** Write `###` for anything that would be H4 or deeper. Flatten or use bold text for finer structure.
 3. **No blank lines around headings, list items, or quotes.** Put a heading, list item, or `>` line directly against its neighbours. Separate plain paragraphs with a single blank line only.
-4. **No horizontal rules.** Drop `---`, `***`, `___`. Use a heading or `-# ` subtext to mark a section change.
+4. **No horizontal rules.** Drop `---`, `***`, `___`, including inside quotes. Use a heading or `-# ` subtext to mark a section change.
 5. **LaTeX becomes Unicode or emoji.** `$\rightarrow$` → ➡️, `$\alpha$` → α, `$\leq$` → ≤, `$\infty$` → ∞, `$\sqrt{2}$` → √2. Write the symbol directly.
 6. **Links point at `http(s)://` only.** A `file://` or other-scheme link renders as broken text. Write the file path as inline code with no link: `` `src/clients.rs` ``.
 7. **Colon style follows the language.** CJK content uses a full-width colon with no space (`**欄位**：值`). Latin content uses `: ` (`**Field**: value`).
@@ -80,7 +80,7 @@ node <path-to-this-skill>/scripts/check.js draft.md
 The checker runs the converter, then lints the draft itself (so line numbers match the file you edit), skipping fenced blocks and inline code. It reports, with line numbers:
 
 - A non-zero converter stat: the draft still contains a form that rules 1 to 6 rewrite. Write the converted form directly.
-- Unsupported constructs the converter passes through untouched: images (inline, reference or shortcut style), reference-style links and their `[ref]: url` definitions, task lists, any HTML tag, footnotes, nested quotes (`> >` or `>>`), definition lists, Setext underline headings, link or autolink destinations that do not start with `http(s)://` (relative paths, `#anchors`, `<mailto:…>` included), TeX math (`$$...$$`, `$\cmd$`, or `$...$` containing `\ ^ _ { }` or an operator with no spaces; plain currency such as `$5 and $10` is not flagged), and a half-width colon after a CJK bold label.
+- Unsupported constructs the converter passes through untouched: images (inline, reference or shortcut style), reference-style links and their `[ref]: url` definitions, task lists, any HTML tag (including tags split across lines), `~~~` fences, footnotes, nested quotes (`> >` or `>>`), definition lists, Setext underline headings, link or autolink destinations that do not start with `http(s)://` (relative paths, `#anchors`, `<mailto:…>` included), TeX math (`$$...$$`, `$\cmd$`, or `$...$` containing `\ ^ _ { }` or an operator with no spaces; plain currency such as `$5 and $10` is not flagged), and a half-width colon after a CJK bold label.
 - Converted length over 2,000 characters.
 
 Done when the checker exits `0` (it prints `通過`) for the message, or for each part of a split message. One thing it cannot judge: that a split lands on a heading boundary. Confirm that by eye.

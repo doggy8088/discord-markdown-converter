@@ -172,6 +172,7 @@ check("check.js 乾淨草稿通過", runCheck(
   "### 標題\n- **欄位**：值\n  - **子項**：ok\n>>> 整段引用\n> 單層引用\n[a](https://x) [b](http://y) <https://z> <@123> <t:1700000000:R>\n" +
   "金額 $100 與 $200 之間、$5 + $10、$100-$200\n<a:wave:123> <:smile:456> <id:customize>\n段落後接圍欄\n\n```\ncode\n```\n`<div>` 與 `![img](https://x)` 與 ``- [ ] `in code` `` 與 `$\\alpha$` 與 `[x](file:///a)`\n```\n![fence](x) - [ ] <b>ok</b>\n~~~\n---\nstill in fence\n```"
 ).code, 0);
+check("check.js 圍欄內跨行 HTML 不誤報", runCheck("```\n<img\nsrc=\"https://x\">\n```").code, 0);
 const dirty = [
   ["image", "![img](https://x/y.png)"],
   ["image", "![alt][logo]"],
@@ -184,6 +185,8 @@ const dirty = [
   ["definition-list", "Term\n: definition"],
   ["html", "<section>x</section>"],
   ["html", "<br/>"],
+  ["html", "<img\nsrc=\"https://x\">"],
+  ["tilde-fence", "~~~\n![img](https://x)\n~~~"],
   ["link-scheme", "[n](notion://x)"],
   ["link-scheme", "[guide](./guide.md)"],
   ["link-scheme", "[s](#intro)"],
@@ -219,12 +222,16 @@ check("圍欄結尾長度不短於開頭", convert("````\n```\n---\n````").markd
 check("行內程式碼內的 LaTeX 與 file:// 不改寫",
   convert("`$\\alpha$` 與 `[a](file:///x)` 但 $\\alpha$ 會轉").markdown, "`$\\alpha$` 與 `[a](file:///x)` 但 α 會轉");
 check("逸出反引號不視為行內程式碼", convert("\\`$\\alpha$\\`").markdown, "\\`α\\`");
+check("引用內的分隔線移除", convert("> 引用\n> ---\n> 後文").markdown, "> 引用\n> 後文");
+check("引用內的分隔線計入 hr", convert("> ---").stats.hr, 1);
 check("段落與圍欄間保留的空白行不計入 blanks",
   JSON.stringify(convert("text\n\n```\ncode\n```").stats.blanks) + " " + convert("text\n\n```\ncode\n```").markdown,
   "0 text\n\n```\ncode\n```");
 check("行內程式碼不計入 stats", JSON.stringify(convert("`$\\alpha$` `[a](file:///x)`").stats),
   JSON.stringify({ tables: 0, hr: 0, blanks: 0, headingsClamped: 0, latex: 0, fileLinks: 0 }));
 check("check.js 轉換器 stats 非 0 視為未通過", runCheck("| a | b |\n|---|---|\n| 1 | 2 |").code, 1);
+check("check.js 引用內分隔線由轉換器 stats 回報", runCheck("> 引用\n> ---").out.includes("hr: 1"), true);
+check("check.js 跨行 HTML 回報開頭行號", runCheck("第一行\n<img\nsrc=\"https://x\">").out.includes("第 2 行 [html]"), true);
 const deep = runCheck("#### 深標題");
 check("check.js H4+ 由轉換器 stats 回報", deep.code === 1 && deep.out.includes("headingsClamped"), true);
 check("check.js 超過 2,000 字元視為未通過", runCheck("x".repeat(2001)).code, 1);
