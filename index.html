@@ -262,6 +262,26 @@
       </div>
     </section>
 
+    <section class="skill" id="skill">
+      <div class="container">
+        <div class="section-head">
+          <h2>安裝 AI Agent Skill</h2>
+          <p>讓 Claude Code、Codex、Cursor 等 AI Agent 一開始就寫出 Discord 適用的 Markdown，不必事後再轉換。</p>
+        </div>
+        <div class="skill-card">
+          <div class="skill-install">
+            <pre><code id="skill-cmd">npx skills add doggy8088/discord-markdown-converter</code></pre>
+            <button type="button" class="btn btn-small btn-copy" id="copy-skill-cmd" aria-label="複製安裝指令">複製</button>
+          </div>
+          <ul class="skill-notes">
+            <li>加上 <code>-g</code> 安裝到全域，所有專案共用；加上 <code>-a &lt;agent&gt;</code> 只安裝給特定 Agent。</li>
+            <li>Skill 內含 Discord 語法速查、九條撰寫規則、轉換前後範例與交付前自檢指令。</li>
+            <li>規則與本工具的轉換邏輯一致，原始檔請見 <a href="https://github.com/doggy8088/discord-markdown-converter/blob/main/SKILL.md" target="_blank" rel="noopener noreferrer">SKILL.md</a>。</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
     <section class="support" id="support">
       <div class="container">
         <div class="section-head">

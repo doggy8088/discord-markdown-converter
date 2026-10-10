@@ -39,6 +39,16 @@ npx serve .
 
 操作流程：左側貼上 Markdown → 自動轉換（或按按鈕／快捷鍵）→ 右側複製／下載結果。
 
+## 安裝 AI Agent Skill
+
+本專案附帶 [`SKILL.md`](SKILL.md)，讓 Claude Code、Codex、Cursor 等 AI Agent 在產出要貼進 Discord 的內容時，直接寫出符合 Discord 渲染規則的 Markdown。用 [skills CLI](https://skills.sh/) 一行安裝：
+
+```bash
+npx skills add doggy8088/discord-markdown-converter
+```
+
+加上 `-g` 可安裝到全域（所有專案共用）；加上 `-a <agent>` 可指定只安裝給特定 Agent。安裝後，Agent 在偵測到輸出目標是 Discord 時會自動套用這份 Skill，並可用本專案的轉換器做交付前自檢。
+
 ## 開發與測試
 
 核心轉換邏輯在 [`js/converter.js`](js/converter.js)（UMD 模組，瀏覽器與 Node 皆可載入）：
@@ -54,6 +64,7 @@ node tests/verify-page.js  # 頁面完整性驗證（meta、資源、範例一�
 
 ```
 ├── index.html              # 主頁面（SEO / OpenGraph / 結構化資料）
+├── SKILL.md                 # AI Agent Skill（npx skills add 安裝）
 ├── css/style.css            # 版面樣式（深色／淺色主題）
 ├── js/converter.js          # 核心轉換邏輯
 ├── js/app.js                # 頁面互動

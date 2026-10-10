@@ -639,6 +639,49 @@ html[data-theme="dark"] .icon-moon { display: none; }
 .rule-card h3 { margin: 0 0 0.45rem; font-size: 1.02rem; font-weight: 700; }
 .rule-card p { margin: 0; font-size: 0.9rem; color: var(--muted); }
 
+/* ---------- Skill install ---------- */
+.skill { padding: 0 0 3.2rem; }
+
+.skill-card {
+  padding: 1.35rem 1.4rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  backdrop-filter: blur(8px);
+}
+
+.skill-install {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+.skill-install pre {
+  flex: 1 1 320px;
+  margin: 0;
+  padding: 0.85rem 1rem;
+  overflow-x: auto;
+  background: var(--code-bg);
+  border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent);
+  border-radius: var(--radius-sm);
+}
+.skill-install pre code {
+  padding: 0;
+  background: none;
+  border: none;
+  font-size: 0.95rem;
+  white-space: nowrap;
+}
+
+.skill-notes {
+  margin: 1rem 0 0;
+  padding-left: 1.2rem;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+.skill-notes li + li { margin-top: 0.35rem; }
+
 /* ---------- Support table ---------- */
 .support { padding: 1rem 0 4.5rem; }
 
