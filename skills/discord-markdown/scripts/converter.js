@@ -48,8 +48,9 @@
     var m = FENCE_RE.exec(line);
     return !!m && m[1][0] === fence.ch && m[1].length >= fence.len && line.trim() === m[1];
   }
-  /* 行內程式碼（`…`、``…``）的 [start, end) 區間；\` 為逸出的字面反引號，不是分隔符 */
-  var INLINE_CODE_RE = /\\`|(`+)(?:[^`]|[^`][\s\S]*?[^`])\1(?!`)/g;
+  /* 行內程式碼（`…`、``…``）的 [start, end) 區間。
+     \\ 先成對吃掉，剩下的單一 \` 才是逸出的字面反引號（奇數個反斜線才逸出） */
+  var INLINE_CODE_RE = /\\\\|\\`|(`+)(?:[^`]|[^`][\s\S]*?[^`])\1(?!`)/g;
   function inlineCodeRanges(line) {
     var ranges = [];
     if (line.indexOf("`") === -1) return ranges;
@@ -312,7 +313,8 @@
         continue;
       }
 
-      transformed.push(line);
+      /* 1) 形式的編號清單 Discord 不支援，改為 1. */
+      transformed.push(line.replace(/^( *(?:>\s*)*\d{1,9})\)(\s)/, "$1.$2"));
     }
 
     /* Pass 2：移除標題／清單／引用前後的空白行（程式碼圍欄內容不受影響） */
