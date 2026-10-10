@@ -14,7 +14,7 @@
 "use strict";
 const fs = require("node:fs");
 const path = require("node:path");
-const { convert } = require(path.join(__dirname, "converter.js"));
+const { convert, inlineCodeRanges } = require(path.join(__dirname, "converter.js"));
 
 const LIMIT = 2000;
 /* 與 converter.js 的 CJK_RE 相同範圍（含假名） */
@@ -36,9 +36,9 @@ const LINE_CHECKS = [
   { id: "indented-heading", re: /^ +#{1,6}\s/, msg: "標題的 # 必須在行首，不可縮排" },
   /* 一般連結（非圖片）目的地必須以 http:// 或 https:// 開頭；相對路徑、#錨點、其他協定一律不可用。
      自動連結 <scheme:…> 亦同；<t:…>、<a:…> 等單字母前綴與 <id:…> 為 Discord 語法，不視為協定 */
-  { id: "link-scheme", re: /(?<!!)\[[^\]]*\]\(\s*(?:\)|<?(?!https?:\/\/)[^)\s>])|<(?!https?:\/\/|id:)[a-zA-Z][a-zA-Z0-9+.-]+:[^>\s]*>/i, msg: "連結僅支援 http(s)://；相對路徑、錨點與其他協定（含 <mailto:…> 等自動連結）改為純文字或行內程式碼" },
+  { id: "link-scheme", re: /(?<!!)\[(?:[^\[\]\\]|\\.|\[[^\[\]]*\])*\]\(\s*(?:\)|<?(?!https?:\/\/)[^)\s>])|<(?!https?:\/\/|id:)[a-zA-Z][a-zA-Z0-9+.-]+:[^>\s]*>/i, msg: "連結僅支援 http(s)://；相對路徑、錨點與其他協定（含 <mailto:…> 等自動連結）改為純文字或行內程式碼" },
   /* 參考式連結 [text][ref]、[text][] 與其定義行 [ref]: url（涵蓋捷徑式 [ref]）；[^n]: 為註腳，另由 footnote 處理 */
-  { id: "reference-link", re: /(?<!!)\[[^\]]*\]\[[^\]]*\]|^ {0,3}\[[^\]^][^\]]*\]:\s+\S/, msg: "參考式連結 [text][ref] 與 [ref]: url 定義不支援；改為行內 [text](https://url)" },
+  { id: "reference-link", re: /(?<!!)\[[^\]]*\]\[[^\]]*\]|^ *(?:>\s*)*\[[^\]^][^\]]*\]:\s+\S/, msg: "參考式連結 [text][ref] 與 [ref]: url 定義不支援；改為行內 [text](https://url)" },
   /* $$…$$ 一律；$\cmd；含 \ ^ _ { } 的 $…$；或不含空白且含 + = * / 的 $…$（如 $x+y$、$2+2=4$）。
      金額「$5 and $10」「$5 + $10」「$100-$200」因含空白或僅有 - 而不會命中 */
   { id: "latex", re: /\$\$[^$\n]+\$\$|\$\\[a-zA-Z]+|\$[^$\n]*[\\^_{}][^$\n]*\$|\$[^$\s]*[+=*\/][^$\s]*\$/, msg: "殘留 LaTeX／TeX 數學；改寫為 Unicode 或 Emoji 純文字" },
@@ -47,14 +47,17 @@ const LINE_CHECKS = [
 
 /* HTML 標籤可能跨行（<img\n src="…">），故對遮蔽後的全文比對；
    <https://…> 自動連結與 <@id> <#id> <t:…> 等 Discord 語法因 tag 名後接 : 或非字母而不會命中 */
-const HTML_RE = /<!--[\s\S]*?-->|<\/?[a-zA-Z][a-zA-Z0-9-]*(?:\s[^<>]*)?\/?>/g;
+const HTML_RE = /<!--[\s\S]*?(?:-->|$)|<\/?[a-zA-Z][a-zA-Z0-9-]*(?:\s[^<>]*)?\/?>/g;
 const HTML_MSG = "HTML 標籤不會渲染；改用 Discord Markdown 語法";
 
-/* 遮蔽行內程式碼：`…` 與 ``…`` 內容換成等長空白，保留原行號與欄位 */
+/* 遮蔽行內程式碼：與轉換器共用同一套區間判斷，內容換成等長空白，保留原行號與欄位 */
 function maskInlineCode(line) {
-  return line
-    .replace(/\\\\|\\`/g, function (m) { return " ".repeat(m.length); }) /* \\ 成對吃掉；剩下的 \` 是逸出的字面反引號 */
-    .replace(/(`+)([^`]|[^`][\s\S]*?[^`])\1(?!`)/g, function (m) { return " ".repeat(m.length); });
+  const ranges = inlineCodeRanges(line);
+  if (!ranges.length) return line;
+  let out = "";
+  let last = 0;
+  for (const [a, b] of ranges) { out += line.slice(last, a) + " ".repeat(b - a); last = b; }
+  return out + line.slice(last);
 }
 
 function isSetextUnderline(line, prev) {
@@ -63,10 +66,11 @@ function isSetextUnderline(line, prev) {
 }
 
 function fenceOpen(raw) {
-  const m = FENCE_OPEN_RE.exec(raw);
+  const line = raw.replace(QUOTE_PREFIX_RE, ""); /* 圍欄可位於引用內（> ```js） */
+  const m = FENCE_OPEN_RE.exec(line);
   if (!m) return null;
   /* ```foo``` 這種同一行就閉合的是行內程式碼，不是圍欄 */
-  if (m[1][0] === "`" && raw.slice(m[0].length).includes("`")) return null;
+  if (m[1][0] === "`" && line.slice(m[0].length).includes("`")) return null;
   return m;
 }
 
@@ -84,7 +88,7 @@ function lint(source) {
     const m = fenceOpen(raw);
     if (fence) {
       /* 只有同字元且長度不短於開頭者才算結尾 */
-      if (m && m[1][0] === fence.ch && m[1].length >= fence.len && raw.trim() === m[1].trim()) fence = null;
+      if (m && m[1][0] === fence.ch && m[1].length >= fence.len && raw.replace(QUOTE_PREFIX_RE, "").trim() === m[1]) fence = null;
       masked.push("");
       prev = null;
       return;

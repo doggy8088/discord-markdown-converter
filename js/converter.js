@@ -37,27 +37,45 @@
   function isQuote(line) { return QUOTE_RE.test(line); }
   function isFence(line) { return FENCE_RE.test(line); }
   /* 圍欄開頭：回傳 { ch, len }；結尾須同字元且長度不短於開頭、整行只有圍欄字元 */
-  function fenceOpen(line) {
+  var QUOTE_PREFIX_RE = /^ {0,3}(?:>\s?)+/;
+  /* 圍欄可位於引用內（> ```js），判斷前先去掉 > 前綴 */
+  function fenceOpen(raw) {
+    var line = raw.replace(QUOTE_PREFIX_RE, "");
     var m = FENCE_RE.exec(line);
     if (!m) return null;
     /* 反引號圍欄的資訊字串不得含反引號（```foo``` 是同一行的行內程式碼，不是圍欄） */
     if (m[1][0] === "`" && line.slice(m[0].length).indexOf("`") !== -1) return null;
     return { ch: m[1][0], len: m[1].length };
   }
-  function fenceCloses(line, fence) {
+  function fenceCloses(raw, fence) {
+    var line = raw.replace(QUOTE_PREFIX_RE, "");
     var m = FENCE_RE.exec(line);
     return !!m && m[1][0] === fence.ch && m[1].length >= fence.len && line.trim() === m[1];
   }
-  /* 行內程式碼（`…`、``…``）的 [start, end) 區間。
-     \\ 先成對吃掉，剩下的單一 \` 才是逸出的字面反引號（奇數個反斜線才逸出） */
-  var INLINE_CODE_RE = /\\\\|\\`|(`+)(?:[^`]|[^`][\s\S]*?[^`])\1(?!`)/g;
+  /* 行內程式碼（`…`、``…``）的 [start, end) 區間（CommonMark 規則）：
+     區間外的 \ 逸出下一個字元（\` 不是分隔符、\\ 是字面反斜線）；
+     區間內的 \ 是字面字元，不逸出反引號；結尾須為等長的反引號串。 */
   function inlineCodeRanges(line) {
     var ranges = [];
     if (line.indexOf("`") === -1) return ranges;
-    INLINE_CODE_RE.lastIndex = 0;
-    var m;
-    while ((m = INLINE_CODE_RE.exec(line)) !== null) {
-      if (m[1]) ranges.push([m.index, m.index + m[0].length]);
+    var n = line.length;
+    var i = 0;
+    while (i < n) {
+      var ch = line[i];
+      if (ch === "\\") { i += 2; continue; }
+      if (ch !== "`") { i += 1; continue; }
+      var len = 0;
+      while (line[i + len] === "`") len += 1;
+      var j = i + len;
+      var closed = false;
+      while (j < n) {
+        if (line[j] !== "`") { j += 1; continue; }
+        var l2 = 0;
+        while (line[j + l2] === "`") l2 += 1;
+        if (l2 === len) { ranges.push([i, j + l2]); i = j + l2; closed = true; break; }
+        j += l2;
+      }
+      if (!closed) i += len; /* 無配對結尾：這串反引號是字面字元 */
     }
     return ranges;
   }
@@ -254,10 +272,10 @@
 
   /* 標題：去掉行首縮排（Discord 要求 # 在行首），H4+ 降級為 ### */
   function clampHeading(line) {
-    var m = /^( {0,3})(#{1,6})(\s)/.exec(line);
+    var m = /^( {0,3})(#{1,6})(?:\s|$)/.exec(line);
     if (!m) return line;
     var hashes = m[2].length > 3 ? "###" : m[2];
-    return hashes + line.slice(m[0].length - 1);
+    return hashes + line.slice(m[1].length + m[2].length);
   }
 
   /**
@@ -290,7 +308,7 @@
       if (isHeading(line)) {
         if (opts.clampHeadings) {
           var clamped = clampHeading(line);
-          if (/^ {0,3}#{4,}\s/.test(line)) stats.headingsClamped += 1;
+          if (/^ {0,3}#{4,}(?:\s|$)/.test(line)) stats.headingsClamped += 1;
           transformed.push(clamped);
         } else {
           transformed.push(line.replace(/^ {0,3}#/, "#"));
@@ -330,7 +348,8 @@
       }
       var open2 = fenceOpen(ln);
       if (open2) {
-        if (pendingBlank && out.length > 0) { out.push(""); stats.blanks -= 1; }
+        /* 圍欄前的空白行只在前一行是一般段落時保留；標題／清單／引用之後一律不留 */
+        if (pendingBlank && out.length > 0 && !isSpecial(out[out.length - 1])) { out.push(""); stats.blanks -= 1; }
         pendingBlank = false;
         out.push(ln);
         fence = open2;
@@ -350,5 +369,5 @@
     return { markdown: out.join("\n"), stats: stats };
   }
 
-  return { convert: convert };
+  return { convert: convert, inlineCodeRanges: inlineCodeRanges };
 });

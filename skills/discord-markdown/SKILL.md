@@ -29,12 +29,12 @@ Each rule names what to write instead of the unsupported form.
 
 1. **Tables become lists.** Discord has no tables, inside quotes included. A one-row table becomes a flat list of `**Header**: value` items. A multi-row table becomes a nested list: the first column is the top-level item, the remaining columns are its sub-items indented by two spaces. Move a parenthesised unit out of the bold: `**總花費**（USD）：$152.39`.
 2. **Headings stop at `###`.** Write `###` for anything that would be H4 or deeper. Flatten or use bold text for finer structure.
-3. **No blank lines around headings, list items, or quotes.** Put a heading, list item, or `>` line directly against its neighbours. Separate plain paragraphs with a single blank line only.
+3. **No blank lines around headings, list items, or quotes.** Put a heading, list item, or `>` line directly against its neighbours, including before a code fence. Separate plain paragraphs with a single blank line only.
 4. **No horizontal rules.** Drop `---`, `***`, `___`, including inside quotes. Use a heading or `-# ` subtext to mark a section change.
 5. **LaTeX becomes Unicode or emoji.** `$\rightarrow$` → ➡️, `$\alpha$` → α, `$\leq$` → ≤, `$\infty$` → ∞, `$\sqrt{2}$` → √2. Write the symbol directly.
 6. **Links point at `http(s)://` only.** A `file://` or other-scheme link renders as broken text. Write the file path as inline code with no link: `` `src/clients.rs` ``.
 7. **Colon style follows the language.** CJK content uses a full-width colon with no space (`**欄位**：值`). Latin content uses `: ` (`**Field**: value`).
-8. **Code is untouched.** Everything inside a fence or an inline code span is preserved verbatim, including `---` and `$...$`. A fence closes only on the same marker character at the same or greater length. Put content that must survive literally inside code.
+8. **Code is untouched.** Everything inside a fence or an inline code span is preserved verbatim, including `---` and `$...$`, also when the fence sits inside a quote (`> ```js`). A fence closes only on the same marker character at the same or greater length. Put content that must survive literally inside code.
 9. **One message is 2,000 characters.** Bot and webhook messages go through the API and are always capped at 2,000. A human Nitro subscriber can post up to 4,000, but target 2,000 unless told the sender is a Nitro user. Split longer output at a heading boundary and label the parts.
 
 Not supported at all, so leave them out: HTML, images via `![]()`, task lists `- [ ]`, footnotes, nested blockquotes, definition lists, and `<details>`.

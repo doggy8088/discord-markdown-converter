@@ -172,6 +172,8 @@ check("check.js 乾淨草稿通過", runCheck(
   "### 標題\n- **欄位**：值\n  - **子項**：ok\n>>> 整段引用\n> 單層引用\n[a](https://x) [b](http://y) <https://z> <@123> <t:1700000000:R>\n" +
   "金額 $100 與 $200 之間、$5 + $10、$100-$200\n<a:wave:123> <:smile:456> <id:customize>\n段落後接圍欄\n\n```\ncode\n```\n`<div>` 與 `![img](https://x)` 與 ``- [ ] `in code` `` 與 `$\\alpha$` 與 `[x](file:///a)`\n```\n![fence](x) - [ ] <b>ok</b>\n~~~\n---\nstill in fence\n```"
 ).code, 0);
+check("check.js 引用內圍欄的內容不檢查", runCheck("> ```js\n> ![x](https://x) <b>x</b>\n> ```").code, 0);
+check("check.js 巢狀括號的 https 連結不誤報", runCheck("[a [b]](https://x)").code, 0);
 check("check.js 偶數反斜線後的反引號仍是行內程式碼", runCheck("\\\\`![x](https://x)`").code, 0);
 check("check.js 圍欄內跨行 HTML 不誤報", runCheck("```\n<img\nsrc=\"https://x\">\n```").code, 0);
 const dirty = [
@@ -197,6 +199,11 @@ const dirty = [
   ["link-scheme", "[x]( )"],
   ["plus-list", "+ item"],
   ["paren-ordered", "1) item"],
+  ["html", "<!-- hidden note"],
+  ["link-scheme", "[a [b]](ftp://example.com)"],
+  ["link-scheme", "[a \\] b](ftp://example.com)"],
+  ["reference-link", "> [docs]\n> [docs]: https://example.com"],
+  ["image", "`a\\` ![x](https://x)`"],
   ["html", "<!-- hidden note -->"],
   ["html", "<!--\nmulti\n-->"],
   ["indented-heading", "  # heading"],
@@ -235,6 +242,13 @@ check("行內程式碼內的 LaTeX 與 file:// 不改寫",
 check("逸出反引號不視為行內程式碼", convert("\\`$\\alpha$\\`").markdown, "\\`α\\`");
 check("偶數反斜線後的反引號仍是分隔符", convert("\\\\`$\\alpha$`").markdown, "\\\\`$\\alpha$`");
 check("1) 編號清單改為 1.", convert("1) 一\n2) 二\n> 3) 三").markdown, "1. 一\n2. 二\n> 3. 三");
+check("引用內的圍欄原封不動", convert("> ```js\n> $\\alpha$ [a](file:///x)\n> ---\n> ```").markdown, "> ```js\n> $\\alpha$ [a](file:///x)\n> ---\n> ```");
+check("只有標記的 #### 也降級", convert("####\n##### ").markdown, "###\n### ");
+check("只有標記的 #### 計入 headingsClamped", convert("####").stats.headingsClamped, 1);
+check("標題與圍欄之間不留空白行", convert("# H\n\n```\nx\n```").markdown, "# H\n```\nx\n```");
+check("段落與圍欄之間保留空白行", convert("p\n\n```\nx\n```").markdown, "p\n\n```\nx\n```");
+check("行內程式碼內的反斜線不逸出反引號", convert("`a\\` $\\alpha$`").markdown, "`a\\` α`");
+check("inlineCodeRanges 匯出且結果正確", JSON.stringify(require("../js/converter.js").inlineCodeRanges("x `a` \\`b\\` ``c`d`` e")), "[[2,5],[12,19]]");
 check("同一行閉合的反引號不是圍欄", convert("```foo```\n\n---\n\n後文").markdown, "```foo```\n\n後文");
 check("標題去掉行首縮排", convert("  ## 標題\n   #### 深").markdown, "## 標題\n### 深");
 check("關閉降級時仍去掉標題縮排", convert("  #### 深", { clampHeadings: false }).markdown, "#### 深");
