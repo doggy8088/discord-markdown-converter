@@ -170,13 +170,14 @@ function runCheck(input) {
 }
 check("check.js 乾淨草稿通過", runCheck(
   "### 標題\n- **欄位**：值\n  - **子項**：ok\n>>> 整段引用\n> 單層引用\n[a](https://x) [b](http://y) <https://z> <@123> <t:1700000000:R>\n" +
-  "金額 $100 與 $200 之間、$5 + $10、$100-$200\n`<div>` 與 `![img](https://x)` 與 ``- [ ] `in code` `` 與 `$\\alpha$` 與 `[x](file:///a)`\n```\n![fence](x) - [ ] <b>ok</b>\n~~~\n---\nstill in fence\n```"
+  "金額 $100 與 $200 之間、$5 + $10、$100-$200\n<a:wave:123> <:smile:456> <id:customize>\n段落後接圍欄\n\n```\ncode\n```\n`<div>` 與 `![img](https://x)` 與 ``- [ ] `in code` `` 與 `$\\alpha$` 與 `[x](file:///a)`\n```\n![fence](x) - [ ] <b>ok</b>\n~~~\n---\nstill in fence\n```"
 ).code, 0);
 const dirty = [
   ["image", "![img](https://x/y.png)"],
   ["image", "![alt][logo]"],
   ["image", "![logo]"],
   ["task-list", "-   [ ] todo"],
+  ["task-list", "> - [ ] todo"],
   ["footnote", "見註腳[^1]"],
   ["nested-quote", "> > nested"],
   ["nested-quote", ">> nested"],
@@ -186,6 +187,8 @@ const dirty = [
   ["link-scheme", "[n](notion://x)"],
   ["link-scheme", "[guide](./guide.md)"],
   ["link-scheme", "[s](#intro)"],
+  ["link-scheme", "<mailto:user@example.com>"],
+  ["link-scheme", "<ftp://example.com>"],
   ["reference-link", "[guide][docs]"],
   ["reference-link", "[guide][]"],
   ["reference-link", "[docs]: https://example.com"],
@@ -216,6 +219,9 @@ check("圍欄結尾長度不短於開頭", convert("````\n```\n---\n````").markd
 check("行內程式碼內的 LaTeX 與 file:// 不改寫",
   convert("`$\\alpha$` 與 `[a](file:///x)` 但 $\\alpha$ 會轉").markdown, "`$\\alpha$` 與 `[a](file:///x)` 但 α 會轉");
 check("逸出反引號不視為行內程式碼", convert("\\`$\\alpha$\\`").markdown, "\\`α\\`");
+check("段落與圍欄間保留的空白行不計入 blanks",
+  JSON.stringify(convert("text\n\n```\ncode\n```").stats.blanks) + " " + convert("text\n\n```\ncode\n```").markdown,
+  "0 text\n\n```\ncode\n```");
 check("行內程式碼不計入 stats", JSON.stringify(convert("`$\\alpha$` `[a](file:///x)`").stats),
   JSON.stringify({ tables: 0, hr: 0, blanks: 0, headingsClamped: 0, latex: 0, fileLinks: 0 }));
 check("check.js 轉換器 stats 非 0 視為未通過", runCheck("| a | b |\n|---|---|\n| 1 | 2 |").code, 1);

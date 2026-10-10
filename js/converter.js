@@ -318,7 +318,7 @@
       }
       var open2 = fenceOpen(ln);
       if (open2) {
-        if (pendingBlank && out.length > 0) out.push("");
+        if (pendingBlank && out.length > 0) { out.push(""); stats.blanks -= 1; }
         pendingBlank = false;
         out.push(ln);
         fence = open2;
