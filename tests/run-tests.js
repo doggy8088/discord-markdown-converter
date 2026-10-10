@@ -154,5 +154,40 @@ check(
   JSON.stringify({ tables: 1, hr: 3, blanks: 14, headingsClamped: 3, latex: 3, fileLinks: 0 })
 );
 
+/* 15. Skill 隨附的轉換器副本必須與 js/converter.js 完全相同 */
+check(
+  "Skill 轉換器副本與 js/converter.js 同步",
+  readFileSync(path.join(__dirname, "..", "skills", "discord-markdown", "scripts", "converter.js"), "utf8"),
+  readFileSync(path.join(__dirname, "..", "js", "converter.js"), "utf8")
+);
+
+/* 16. Skill 檢查腳本：乾淨草稿結束碼 0；每種不支援語法都要被抓到 */
+const { spawnSync } = require("node:child_process");
+const CHECK = path.join(__dirname, "..", "skills", "discord-markdown", "scripts", "check.js");
+function runCheck(input) {
+  const r = spawnSync(process.execPath, [CHECK], { input, encoding: "utf8" });
+  return { code: r.status, out: r.stdout + r.stderr };
+}
+check("check.js 乾淨草稿通過", runCheck("### 標題\n- **欄位**：值\n  - **子項**：ok\n```\n![fence](x) - [ ] <b>ok</b>\n```").code, 0);
+const dirty = {
+  "image": "![img](https://x/y.png)",
+  "task-list": "- [ ] todo",
+  "footnote": "見註腳[^1]",
+  "nested-quote": "> > nested",
+  "html": "<details>x</details>",
+  "link-scheme": "[n](notion://x)",
+  "latex": "$\\foo$",
+  "cjk-colon": "**欄位**: 值"
+};
+for (const [id, line] of Object.entries(dirty)) {
+  const r = runCheck(line);
+  check(`check.js 抓到 [${id}]`, r.code === 1 && r.out.includes(`[${id}]`), true);
+}
+check("check.js 轉換器 stats 非 0 視為未通過", runCheck("| a | b |\n|---|---|\n| 1 | 2 |").code, 1);
+const deep = runCheck("#### 深標題");
+check("check.js H4+ 由轉換器 stats 回報", deep.code === 1 && deep.out.includes("headingsClamped"), true);
+check("check.js 超過 2,000 字元視為未通過", runCheck("x".repeat(2001)).code, 1);
+check("check.js http(s) 連結不誤報", runCheck("[a](https://x) [b](http://y) <https://z>").code, 0);
+
 console.log(failures === 0 ? "\n全部測試通過 ✔" : `\n${failures} 項測試失敗 ✘`);
 process.exit(failures === 0 ? 0 : 1);
