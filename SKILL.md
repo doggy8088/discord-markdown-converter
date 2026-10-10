@@ -7,7 +7,7 @@ description: Write Markdown that renders correctly when pasted into a Discord me
 
 Discord renders a small subset of Markdown and renders it *literally*: every blank line becomes visible vertical space, and unsupported syntax shows up as raw characters. Write for that renderer from the start rather than writing standard Markdown and hoping.
 
-The rules below are the same ones [`js/converter.js`](js/converter.js) applies mechanically. Output that already follows them passes through the converter unchanged, which is the check at the end.
+Rules 1 to 5, and the `file://` case of rule 6, are transformations that [`js/converter.js`](js/converter.js) performs mechanically, so the check at the end catches them. Rule 8 is a guarantee the converter makes. Rules 7 and 9, other link schemes, and the unsupported list are authoring rules the converter does not enforce; review those by eye.
 
 ## Supported syntax
 
@@ -70,7 +70,7 @@ Discord Markdown:
 
 ## Check before delivering
 
-Run the draft through the converter. Every stat at zero means the draft is already Discord-ready; a non-zero stat names the rule you missed.
+Run the draft through the converter. A non-zero stat names one of rules 1 to 6 that you missed. All stats at zero means those rules hold; it does not vouch for the rest.
 
 ```bash
 node -e '
@@ -80,4 +80,9 @@ console.log(r.stats, "length:", r.markdown.length);
 ' draft.md
 ```
 
-Done when: all stats are `0` and `length` is under 2,000 (or each split part is).
+Done when:
+
+- All stats are `0`.
+- `length` is under 2,000 (or each split part is). The converter reports length but does not enforce it.
+- A manual pass confirms rule 7 (colon style in prose; the converter only normalises colons inside converted tables), rule 6 for schemes other than `file://`, and the unsupported list (task lists, images, HTML, footnotes). The converter passes these through untouched.
+- No `$\...$` remains. The converter leaves LaTeX it does not recognise unchanged, so an unconverted command appears verbatim in Discord.
