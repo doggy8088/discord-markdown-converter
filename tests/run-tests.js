@@ -170,23 +170,31 @@ function runCheck(input) {
 }
 check("check.js 乾淨草稿通過", runCheck(
   "### 標題\n- **欄位**：值\n  - **子項**：ok\n>>> 整段引用\n> 單層引用\n[a](https://x) [b](http://y) <https://z> <@123> <t:1700000000:R>\n" +
-  "金額 $100 與 $200 之間\n`<div>` 與 `![img](https://x)` 與 ``- [ ] `in code` ``\n```\n![fence](x) - [ ] <b>ok</b>\n~~~\nstill in fence\n```"
+  "金額 $100 與 $200 之間、$5 + $10、$100-$200\n`<div>` 與 `![img](https://x)` 與 ``- [ ] `in code` `` 與 `$\\alpha$` 與 `[x](file:///a)`\n```\n![fence](x) - [ ] <b>ok</b>\n~~~\n---\nstill in fence\n```"
 ).code, 0);
 const dirty = [
   ["image", "![img](https://x/y.png)"],
   ["image", "![alt][logo]"],
+  ["image", "![logo]"],
   ["task-list", "-   [ ] todo"],
   ["footnote", "見註腳[^1]"],
   ["nested-quote", "> > nested"],
+  ["nested-quote", ">> nested"],
   ["definition-list", "Term\n: definition"],
   ["html", "<section>x</section>"],
   ["html", "<br/>"],
   ["link-scheme", "[n](notion://x)"],
   ["link-scheme", "[guide](./guide.md)"],
   ["link-scheme", "[s](#intro)"],
+  ["reference-link", "[guide][docs]"],
+  ["reference-link", "[guide][]"],
+  ["reference-link", "[docs]: https://example.com"],
+  ["image", "\\`![x](https://x)\\`"],
   ["latex", "$\\foo$"],
   ["latex", "$x^2 + y^2$"],
   ["latex", "$$a_i$$"],
+  ["latex", "$x+y$"],
+  ["latex", "$2+2=4$"],
   ["cjk-colon", "**欄位**:值"],
   ["cjk-colon", "**モデル**: 値"],
   ["setext-heading", "Heading\n======"],
@@ -199,6 +207,17 @@ for (const [id, line] of dirty) {
 check("check.js 行號對應草稿而非轉換結果",
   runCheck("| a | b |\n|---|---|\n| 1 | 2 |\n| 3 | 4 |\n\n\n![img](https://x)").out.includes("第 7 行 [image]"), true);
 check("check.js 圍欄結尾須與開頭同字元", runCheck("```\n~~~\n```\n![x](https://x)").out.includes("[image]"), true);
+check("check.js 註腳定義不重複報為參考式連結", runCheck("[^1]: note").out.includes("[reference-link]"), false);
+
+/* 17. 轉換器：圍欄結尾須與開頭配對；行內程式碼內容不改寫 */
+check("圍欄內 ~~~ 與 --- 原封不動",
+  convert("```\n~~~\n---\n$\\alpha$\n```").markdown, "```\n~~~\n---\n$\\alpha$\n```");
+check("圍欄結尾長度不短於開頭", convert("````\n```\n---\n````").markdown, "````\n```\n---\n````");
+check("行內程式碼內的 LaTeX 與 file:// 不改寫",
+  convert("`$\\alpha$` 與 `[a](file:///x)` 但 $\\alpha$ 會轉").markdown, "`$\\alpha$` 與 `[a](file:///x)` 但 α 會轉");
+check("逸出反引號不視為行內程式碼", convert("\\`$\\alpha$\\`").markdown, "\\`α\\`");
+check("行內程式碼不計入 stats", JSON.stringify(convert("`$\\alpha$` `[a](file:///x)`").stats),
+  JSON.stringify({ tables: 0, hr: 0, blanks: 0, headingsClamped: 0, latex: 0, fileLinks: 0 }));
 check("check.js 轉換器 stats 非 0 視為未通過", runCheck("| a | b |\n|---|---|\n| 1 | 2 |").code, 1);
 const deep = runCheck("#### 深標題");
 check("check.js H4+ 由轉換器 stats 回報", deep.code === 1 && deep.out.includes("headingsClamped"), true);

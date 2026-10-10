@@ -11,6 +11,7 @@
  *   6. LaTeX 數學語法（$\rightarrow$ 等）轉換為 Emoji 或 Unicode 符號（Discord 不支援）
  *   7. H4 以上標題整體降級為 ###（Discord 僅支援 H1–H3），可統計警告數量
  *   8. 移除 file:// 本地檔案連結，僅保留連結文字（Discord 不支援 file:// 協定連結）
+ *   9. 程式碼圍欄（結尾須與開頭同字元且不短於開頭）與行內程式碼內容原封不動
  *
  * MIT License © 2026 Will 保哥
  */
@@ -28,13 +29,52 @@
   var HEADING_RE = /^ {0,3}#{1,6}(?:\s|$)/;
   var LIST_RE = /^ {0,3}(?:[-*+]|\d{1,9}[.)])(?:\s|$)/;
   var QUOTE_RE = /^ {0,3}>/;
-  var FENCE_RE = /^ {0,3}(?:```|~~~)/;
+  var FENCE_RE = /^ {0,3}(`{3,}|~{3,})/;
   var HR_RE = /^([-*_])(?:[ \t]*\1){2,}[ \t]*$/;
 
   function isHeading(line) { return HEADING_RE.test(line); }
   function isListItem(line) { return LIST_RE.test(line); }
   function isQuote(line) { return QUOTE_RE.test(line); }
   function isFence(line) { return FENCE_RE.test(line); }
+  /* 圍欄開頭：回傳 { ch, len }；結尾須同字元且長度不短於開頭、整行只有圍欄字元 */
+  function fenceOpen(line) {
+    var m = FENCE_RE.exec(line);
+    return m ? { ch: m[1][0], len: m[1].length } : null;
+  }
+  function fenceCloses(line, fence) {
+    var m = FENCE_RE.exec(line);
+    return !!m && m[1][0] === fence.ch && m[1].length >= fence.len && line.trim() === m[1];
+  }
+  /* 行內程式碼（`…`、``…``）的 [start, end) 區間；\` 為逸出的字面反引號，不是分隔符 */
+  var INLINE_CODE_RE = /\\`|(`+)(?:[^`]|[^`][\s\S]*?[^`])\1(?!`)/g;
+  function inlineCodeRanges(line) {
+    var ranges = [];
+    if (line.indexOf("`") === -1) return ranges;
+    INLINE_CODE_RE.lastIndex = 0;
+    var m;
+    while ((m = INLINE_CODE_RE.exec(line)) !== null) {
+      if (m[1]) ranges.push([m.index, m.index + m[0].length]);
+    }
+    return ranges;
+  }
+  function insideRanges(ranges, start, end) {
+    for (var r = 0; r < ranges.length; r++) {
+      if (start >= ranges[r][0] && end <= ranges[r][1]) return true;
+    }
+    return false;
+  }
+  /* 只對行內程式碼以外的片段套用 fn */
+  function outsideInlineCode(line, fn) {
+    var ranges = inlineCodeRanges(line);
+    if (!ranges.length) return fn(line);
+    var out = "";
+    var last = 0;
+    ranges.forEach(function (rg) {
+      out += fn(line.slice(last, rg[0])) + line.slice(rg[0], rg[1]);
+      last = rg[1];
+    });
+    return out + fn(line.slice(last));
+  }
   function isBlank(line) { return line.trim() === ""; }
   function isSpecial(line) { return isHeading(line) || isListItem(line) || isQuote(line); }
 
@@ -129,6 +169,11 @@
 
   function replaceLatexLine(line, stats) {
     if (line.indexOf("$") === -1 || line.indexOf("\\") === -1) return line;
+    return outsideInlineCode(line, function (seg) { return replaceLatexSegment(seg, stats); });
+  }
+
+  function replaceLatexSegment(line, stats) {
+    if (line.indexOf("$") === -1 || line.indexOf("\\") === -1) return line;
     var out = line;
     var replace = function (m, cmd) {
       var rep = LATEX_MAP[cmd];
@@ -191,9 +236,12 @@
   /* 移除 file:// 本地檔案連結，僅保留連結文字（Discord 不支援 file:// 協定） */
   var FILE_LINK_RE = /(?<![!\\])\[((?:`[^`]*`|\[[^\]]*\]|[^\[\]])*)\]\(\s*(?:<file:\/{1,3}[^>]*>|file:\/{1,3}(?:[^\s()]+|\([^\s()]+\))*)(?:\s+(?:"[^"]*"|'[^']*'|\([^)]*\)))?\s*\)/gi;
 
+  /* 連結文字本身常含行內程式碼（[`src/a.rs`](file://…)），故不切段，只跳過整個落在行內程式碼內的連結 */
   function replaceFileLinks(line, stats) {
     if (line.toLowerCase().indexOf("file:") === -1) return line;
-    return line.replace(FILE_LINK_RE, function (match, text) {
+    var ranges = inlineCodeRanges(line);
+    return line.replace(FILE_LINK_RE, function (match, text, offset) {
+      if (insideRanges(ranges, offset, offset + match.length)) return match;
       stats.fileLinks += 1;
       return text;
     });
@@ -220,11 +268,12 @@
 
     /* Pass 1：表格 → 清單、移除水平分隔線、（選配）標題壓縮、移除 file:// 連結 */
     var transformed = [];
-    var inFence = false;
+    var inFence = null;
     for (var i = 0; i < lines.length; i++) {
       var line = lines[i];
-      if (isFence(line)) { inFence = !inFence; transformed.push(line); continue; }
-      if (inFence) { transformed.push(line); continue; }
+      if (inFence) { if (fenceCloses(line, inFence)) inFence = null; transformed.push(line); continue; }
+      var open1 = fenceOpen(line);
+      if (open1) { inFence = open1; transformed.push(line); continue; }
 
       line = replaceLatexLine(line, stats); /* LaTeX → Emoji / Unicode */
       line = replaceFileLinks(line, stats); /* 移除 file:// 連結，僅保留文字 */
@@ -259,17 +308,22 @@
     /* Pass 2：移除標題／清單／引用前後的空白行（程式碼圍欄內容不受影響） */
     var out = [];
     var pendingBlank = false;
-    var fence = false;
+    var fence = null;
     for (var k = 0; k < transformed.length; k++) {
       var ln = transformed[k];
-      if (isFence(ln)) {
+      if (fence) {
+        if (fenceCloses(ln, fence)) fence = null;
+        out.push(ln);
+        continue;
+      }
+      var open2 = fenceOpen(ln);
+      if (open2) {
         if (pendingBlank && out.length > 0) out.push("");
         pendingBlank = false;
         out.push(ln);
-        fence = !fence;
+        fence = open2;
         continue;
       }
-      if (fence) { out.push(ln); continue; }
       if (isBlank(ln)) { pendingBlank = true; stats.blanks += 1; continue; }
       var special = isSpecial(ln);
       if (special || (out.length > 0 && isSpecial(out[out.length - 1]))) {
