@@ -201,6 +201,11 @@
     copyText(outputEl.value, function () { toast("已複製到剪貼簿 📋"); });
   });
 
+  /* ---------- 複製 Skill 安裝指令 ---------- */
+  $("#copy-skill-cmd").addEventListener("click", function () {
+    copyText($("#skill-cmd").textContent, function () { toast("已複製安裝指令 📋"); });
+  });
+
   /* ---------- 下載 ---------- */
   $("#download-output").addEventListener("click", function () {
     if (!outputEl.value) { toast("請先轉換內容"); return; }

@@ -154,5 +154,117 @@ check(
   JSON.stringify({ tables: 1, hr: 3, blanks: 14, headingsClamped: 3, latex: 3, fileLinks: 0 })
 );
 
+/* 15. Skill 隨附的轉換器副本必須與 js/converter.js 完全相同 */
+check(
+  "Skill 轉換器副本與 js/converter.js 同步",
+  readFileSync(path.join(__dirname, "..", "skills", "discord-markdown", "scripts", "converter.js"), "utf8"),
+  readFileSync(path.join(__dirname, "..", "js", "converter.js"), "utf8")
+);
+
+/* 16. Skill 檢查腳本：乾淨草稿結束碼 0；每種不支援語法都要被抓到 */
+const { spawnSync } = require("node:child_process");
+const CHECK = path.join(__dirname, "..", "skills", "discord-markdown", "scripts", "check.js");
+function runCheck(input) {
+  const r = spawnSync(process.execPath, [CHECK], { input, encoding: "utf8" });
+  return { code: r.status, out: r.stdout + r.stderr };
+}
+check("check.js 乾淨草稿通過", runCheck(
+  "### 標題\n- **欄位**：值\n  - **子項**：ok\n>>> 整段引用\n> 單層引用\n[a](https://x) [b](http://y) <https://z> <@123> <t:1700000000:R>\n" +
+  "金額 $100 與 $200 之間、$5 + $10、$100-$200\n<a:wave:123> <:smile:456> <id:customize>\n段落後接圍欄\n\n```\ncode\n```\n`<div>` 與 `![img](https://x)` 與 ``- [ ] `in code` `` 與 `$\\alpha$` 與 `[x](file:///a)`\n```\n![fence](x) - [ ] <b>ok</b>\n~~~\n---\nstill in fence\n```"
+).code, 0);
+check("check.js 引用內圍欄的內容不檢查", runCheck("> ```js\n> ![x](https://x) <b>x</b>\n> ```").code, 0);
+check("check.js 巢狀括號的 https 連結不誤報", runCheck("[a [b]](https://x)").code, 0);
+check("check.js 偶數反斜線後的反引號仍是行內程式碼", runCheck("\\\\`![x](https://x)`").code, 0);
+check("check.js 圍欄內跨行 HTML 不誤報", runCheck("```\n<img\nsrc=\"https://x\">\n```").code, 0);
+const dirty = [
+  ["image", "![img](https://x/y.png)"],
+  ["image", "![alt][logo]"],
+  ["image", "![logo]"],
+  ["task-list", "-   [ ] todo"],
+  ["task-list", "> - [ ] todo"],
+  ["footnote", "見註腳[^1]"],
+  ["nested-quote", "> > nested"],
+  ["nested-quote", ">> nested"],
+  ["definition-list", "Term\n: definition"],
+  ["html", "<section>x</section>"],
+  ["html", "<br/>"],
+  ["html", "<img\nsrc=\"https://x\">"],
+  ["tilde-fence", "~~~\n![img](https://x)\n~~~"],
+  ["link-scheme", "[n](notion://x)"],
+  ["link-scheme", "[guide](./guide.md)"],
+  ["link-scheme", "[s](#intro)"],
+  ["link-scheme", "<mailto:user@example.com>"],
+  ["link-scheme", "<ftp://example.com>"],
+  ["link-scheme", "[x]()"],
+  ["link-scheme", "[x]( )"],
+  ["plus-list", "+ item"],
+  ["paren-ordered", "1) item"],
+  ["html", "<!-- hidden note"],
+  ["link-scheme", "[a [b]](ftp://example.com)"],
+  ["link-scheme", "[a \\] b](ftp://example.com)"],
+  ["reference-link", "> [docs]\n> [docs]: https://example.com"],
+  ["image", "`a\\` ![x](https://x)`"],
+  ["html", "<!-- hidden note -->"],
+  ["html", "<!--\nmulti\n-->"],
+  ["indented-heading", "  # heading"],
+  ["quoted-table", "> | A | B |\n> |---|---|\n> | 1 | 2 |"],
+  ["image", "```foo```\n![x](https://x)"],
+  ["task-list", "\uFEFF- [ ] todo"],
+  ["reference-link", "[guide][docs]"],
+  ["reference-link", "[guide][]"],
+  ["reference-link", "[docs]: https://example.com"],
+  ["image", "\\`![x](https://x)\\`"],
+  ["latex", "$\\foo$"],
+  ["latex", "$x^2 + y^2$"],
+  ["latex", "$$a_i$$"],
+  ["latex", "$x+y$"],
+  ["latex", "$2+2=4$"],
+  ["cjk-colon", "**欄位**:值"],
+  ["cjk-colon", "**モデル**: 値"],
+  ["setext-heading", "Heading\n======"],
+  ["setext-heading", "Heading\n------"]
+];
+for (const [id, line] of dirty) {
+  const r = runCheck(line);
+  check(`check.js 抓到 [${id}] ← ${JSON.stringify(line)}`, r.code === 1 && r.out.includes(`[${id}]`), true);
+}
+check("check.js 行號對應草稿而非轉換結果",
+  runCheck("| a | b |\n|---|---|\n| 1 | 2 |\n| 3 | 4 |\n\n\n![img](https://x)").out.includes("第 7 行 [image]"), true);
+check("check.js 圍欄結尾須與開頭同字元", runCheck("```\n~~~\n```\n![x](https://x)").out.includes("[image]"), true);
+check("check.js 註腳定義不重複報為參考式連結", runCheck("[^1]: note").out.includes("[reference-link]"), false);
+
+/* 17. 轉換器：圍欄結尾須與開頭配對；行內程式碼內容不改寫 */
+check("圍欄內 ~~~ 與 --- 原封不動",
+  convert("```\n~~~\n---\n$\\alpha$\n```").markdown, "```\n~~~\n---\n$\\alpha$\n```");
+check("圍欄結尾長度不短於開頭", convert("````\n```\n---\n````").markdown, "````\n```\n---\n````");
+check("行內程式碼內的 LaTeX 與 file:// 不改寫",
+  convert("`$\\alpha$` 與 `[a](file:///x)` 但 $\\alpha$ 會轉").markdown, "`$\\alpha$` 與 `[a](file:///x)` 但 α 會轉");
+check("逸出反引號不視為行內程式碼", convert("\\`$\\alpha$\\`").markdown, "\\`α\\`");
+check("偶數反斜線後的反引號仍是分隔符", convert("\\\\`$\\alpha$`").markdown, "\\\\`$\\alpha$`");
+check("1) 編號清單改為 1.", convert("1) 一\n2) 二\n> 3) 三").markdown, "1. 一\n2. 二\n> 3. 三");
+check("引用內的圍欄原封不動", convert("> ```js\n> $\\alpha$ [a](file:///x)\n> ---\n> ```").markdown, "> ```js\n> $\\alpha$ [a](file:///x)\n> ---\n> ```");
+check("只有標記的 #### 也降級", convert("####\n##### ").markdown, "###\n### ");
+check("只有標記的 #### 計入 headingsClamped", convert("####").stats.headingsClamped, 1);
+check("標題與圍欄之間不留空白行", convert("# H\n\n```\nx\n```").markdown, "# H\n```\nx\n```");
+check("段落與圍欄之間保留空白行", convert("p\n\n```\nx\n```").markdown, "p\n\n```\nx\n```");
+check("行內程式碼內的反斜線不逸出反引號", convert("`a\\` $\\alpha$`").markdown, "`a\\` α`");
+check("inlineCodeRanges 匯出且結果正確", JSON.stringify(require("../js/converter.js").inlineCodeRanges("x `a` \\`b\\` ``c`d`` e")), "[[2,5],[12,19]]");
+check("同一行閉合的反引號不是圍欄", convert("```foo```\n\n---\n\n後文").markdown, "```foo```\n\n後文");
+check("標題去掉行首縮排", convert("  ## 標題\n   #### 深").markdown, "## 標題\n### 深");
+check("關閉降級時仍去掉標題縮排", convert("  #### 深", { clampHeadings: false }).markdown, "#### 深");
+check("引用內的分隔線移除", convert("> 引用\n> ---\n> 後文").markdown, "> 引用\n> 後文");
+check("引用內的分隔線計入 hr", convert("> ---").stats.hr, 1);
+check("段落與圍欄間保留的空白行不計入 blanks",
+  JSON.stringify(convert("text\n\n```\ncode\n```").stats.blanks) + " " + convert("text\n\n```\ncode\n```").markdown,
+  "0 text\n\n```\ncode\n```");
+check("行內程式碼不計入 stats", JSON.stringify(convert("`$\\alpha$` `[a](file:///x)`").stats),
+  JSON.stringify({ tables: 0, hr: 0, blanks: 0, headingsClamped: 0, latex: 0, fileLinks: 0 }));
+check("check.js 轉換器 stats 非 0 視為未通過", runCheck("| a | b |\n|---|---|\n| 1 | 2 |").code, 1);
+check("check.js 引用內分隔線由轉換器 stats 回報", runCheck("> 引用\n> ---").out.includes("hr: 1"), true);
+check("check.js 跨行 HTML 回報開頭行號", runCheck("第一行\n<img\nsrc=\"https://x\">").out.includes("第 2 行 [html]"), true);
+const deep = runCheck("#### 深標題");
+check("check.js H4+ 由轉換器 stats 回報", deep.code === 1 && deep.out.includes("headingsClamped"), true);
+check("check.js 超過 2,000 字元視為未通過", runCheck("x".repeat(2001)).code, 1);
+
 console.log(failures === 0 ? "\n全部測試通過 ✔" : `\n${failures} 項測試失敗 ✘`);
 process.exit(failures === 0 ? 0 : 1);

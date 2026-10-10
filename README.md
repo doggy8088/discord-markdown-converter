@@ -13,7 +13,7 @@
 - ➡️ **LaTeX → Emoji / Unicode** — Discord 不支援 LaTeX。`$\rightarrow$` → ➡️、`$\alpha$` → α、`$\infty$` → ∞，支援 90+ 常用符號。
 - 🔗 **移除 file:// 本地檔案連結** — Discord 不支援 `file://` 協定連結。例如 <code>[\`src/clients.rs\`](file:///path/src/clients.rs)</code> 會自動去除連結，僅保留文字 <code>\`src/clients.rs\`</code>。
 - 🔽 **H4+ 標題整體降級** — Discord 僅支援 H1–H3，`####` 以上標題自動降級為 `###` 並統計警告（可於頁面選項關閉）。
-- 🛡️ **程式碼區塊原封不動** — 「```」圍欄內容完整保留，不會被誤改。
+- 🛡️ **程式碼原封不動** — 「```」圍欄（結尾須與開頭同字元）與行內程式碼「`…`」內容完整保留，不會被誤改。
 - 📊 **字數計數與上限提醒** — Discord 單則訊息上限 2,000 字元（Nitro 4,000），超量自動提醒分段。
 - 🌙 **深色／淺色主題** — 跟隨系統設定，可手動切換並記住偏好。
 
@@ -39,6 +39,20 @@ npx serve .
 
 操作流程：左側貼上 Markdown → 自動轉換（或按按鈕／快捷鍵）→ 右側複製／下載結果。
 
+## 安裝 AI Agent Skill
+
+本專案附帶 [`skills/discord-markdown/SKILL.md`](skills/discord-markdown/SKILL.md)，讓 Claude Code、Codex、Cursor 等 AI Agent 在產出要貼進 Discord 的內容時，直接寫出符合 Discord 渲染規則的 Markdown。用 [skills CLI](https://skills.sh/) 一行安裝：
+
+```bash
+npx skills add doggy8088/discord-markdown-converter
+```
+
+加上 `-g` 可安裝到全域（所有專案共用）；加上 `-a <agent>` 可指定只安裝給特定 Agent。安裝後，Agent 在偵測到輸出目標是 Discord 時會自動套用這份 Skill，並用隨附的檢查腳本做交付前自檢：
+
+```bash
+node skills/discord-markdown/scripts/check.js draft.md   # 結束碼 0 = 可直接貼進 Discord
+```
+
 ## 開發與測試
 
 核心轉換邏輯在 [`js/converter.js`](js/converter.js)（UMD 模組，瀏覽器與 Node 皆可載入）：
@@ -54,6 +68,9 @@ node tests/verify-page.js  # 頁面完整性驗證（meta、資源、範例一�
 
 ```
 ├── index.html              # 主頁面（SEO / OpenGraph / 結構化資料）
+├── skills/discord-markdown/ # AI Agent Skill（npx skills add 安裝）
+│   ├── SKILL.md             # 撰寫規則與範例
+│   └── scripts/             # check.js 交付前檢查、converter.js（js/converter.js 的同步副本）
 ├── css/style.css            # 版面樣式（深色／淺色主題）
 ├── js/converter.js          # 核心轉換邏輯
 ├── js/app.js                # 頁面互動
