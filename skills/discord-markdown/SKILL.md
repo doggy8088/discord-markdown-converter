@@ -77,10 +77,10 @@ node <path-to-this-skill>/scripts/check.js draft.md
 # or: cat draft.md | node <path-to-this-skill>/scripts/check.js
 ```
 
-The checker runs the converter and then lints the result outside code fences. It reports, with line numbers:
+The checker runs the converter, then lints the draft itself (so line numbers match the file you edit), skipping fenced blocks and inline code. It reports, with line numbers:
 
 - A non-zero converter stat: the draft still contains a form that rules 1 to 6 rewrite. Write the converted form directly.
-- Unsupported constructs the converter passes through untouched: images, task lists, HTML tags, footnotes, nested quotes, non-`http(s)` link schemes, leftover `$\...$` LaTeX, and a half-width colon after a CJK bold label.
-- Length over 2,000 characters.
+- Unsupported constructs the converter passes through untouched: images (inline or reference style), task lists, any HTML tag, footnotes, nested quotes, definition lists, Setext underline headings, link destinations that do not start with `http(s)://` (relative paths and `#anchors` included), `$...$` or `$$...$$` TeX math, and a half-width colon after a CJK bold label.
+- Converted length over 2,000 characters.
 
 Done when the checker exits `0` (it prints `通過`) for the message, or for each part of a split message. One thing it cannot judge: that a split lands on a heading boundary. Confirm that by eye.

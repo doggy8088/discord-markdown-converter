@@ -4,9 +4,10 @@
  * 用法：node check.js <draft.md>   或   cat draft.md | node check.js
  *
  * 1. 以轉換器跑一次草稿：任一 stat 非 0，代表草稿仍含轉換器會改寫的語法。
- * 2. 對轉換結果（程式碼圍欄除外）檢查轉換器不會處理的語法：圖片、任務清單、
- *    HTML 標籤、註腳、巢狀引用、非 http(s) 連結、殘留 LaTeX、CJK 半形冒號、
- *    以及 2,000 字元上限。
+ * 2. 對「原始草稿」逐行檢查轉換器不會處理的語法（行號對應草稿；程式碼圍欄與
+ *    行內程式碼不檢查）：圖片、任務清單、HTML 標籤、註腳、巢狀引用、定義清單、
+ *    Setext 標題、非 http(s) 連結、殘留 LaTeX、CJK 標籤後的半形冒號。
+ * 3. 轉換結果長度不得超過 2,000 字元。
  * 結束碼 0 = 全部通過；1 = 有待修正項目（逐行列出）。
  */
 "use strict";
@@ -15,19 +16,64 @@ const path = require("node:path");
 const { convert } = require(path.join(__dirname, "converter.js"));
 
 const LIMIT = 2000;
-const CJK_RE = /[㐀-䶿一-鿿豈-﫿぀-ヿ]/;
-const FENCE_RE = /^ {0,3}(?:```|~~~)/;
+/* 與 converter.js 的 CJK_RE 相同範圍（含假名） */
+const CJK = "\\u3400-\\u4DBF\\u4E00-\\u9FFF\\uF900-\\uFAFF\\u3040-\\u30FF";
+const FENCE_OPEN_RE = /^ {0,3}(`{3,}|~{3,})/;
+const LIST_RE = /^ {0,3}(?:[-*+]|\d{1,9}[.)])(?:\s|$)/;
+const BLOCK_RE = /^ {0,3}(?:#{1,6}(?:\s|$)|>)/;
 
-const CHECKS = [
-  { id: "image", re: /!\[[^\]]*\]\([^)]*\)/, msg: "圖片語法 ![]() 不會顯示；改貼圖片網址或上傳附件" },
-  { id: "task-list", re: /^ *(?:[-*+]|\d+[.)]) \[[ xX]\]/, msg: "任務清單 - [ ] 不支援；改用一般清單" },
+/* 單行檢查：re 對該行（已遮蔽行內程式碼）測試 */
+const LINE_CHECKS = [
+  { id: "image", re: /!\[[^\]]*\](?:\([^)]*\)|\[[^\]]*\])/, msg: "圖片語法 ![]() / ![][] 不會顯示；改貼圖片網址或上傳附件" },
+  { id: "task-list", re: /^ *(?:[-*+]|\d{1,9}[.)])\s+\[[ xX]\]/, msg: "任務清單 - [ ] 不支援；改用一般清單" },
   { id: "footnote", re: /\[\^[^\]]+\]/, msg: "註腳 [^n] 不支援；改為行內說明或括號" },
-  { id: "nested-quote", re: /^ *> *>/, msg: "巢狀引用 > > 不支援；改為單層 > 或 >>>" },
-  { id: "html", re: /<\/?(?:details|summary|br|p|div|span|table|tr|td|th|img|a|b|i|u|s|strong|em|code|pre|ul|ol|li|h[1-6]|sup|sub|kbd)\b[^>]*>/i, msg: "HTML 標籤不會渲染；改用 Discord Markdown 語法" },
-  { id: "link-scheme", re: /\[[^\]]*\]\(\s*<?(?!https?:\/\/|#)[a-zA-Z][a-zA-Z0-9+.-]*:/, msg: "連結僅支援 http(s)://；其他協定改為純文字或行內程式碼" },
-  { id: "latex", re: /\$\\[a-zA-Z]+/, msg: "殘留 LaTeX 指令；改寫為 Unicode 或 Emoji" },
-  { id: "cjk-colon", re: /\*\*[^*\n]*[\u3400-\u9FFF][^*\n]*\*\*(?:（[^）]*）)?: /, msg: "CJK 標題後請用全形冒號「：」且不加空格" }
+  { id: "nested-quote", re: /^ *>\s+>/, msg: "巢狀引用 > > 不支援；改為單層 > 或 >>>" },
+  { id: "definition-list", re: /^ {0,3}:\s+\S/, msg: "定義清單（: 開頭的定義行）不支援；改為「**詞**：說明」" },
+  /* 任何 <tag ...> / </tag> / <tag/>；<https://…> 自動連結與 <@id> <#id> <t:…> 等 Discord 語法因 tag 名後接 : 或非字母而不會命中 */
+  { id: "html", re: /<\/?[a-zA-Z][a-zA-Z0-9-]*(?:\s[^<>]*)?\/?>/, msg: "HTML 標籤不會渲染；改用 Discord Markdown 語法" },
+  /* 一般連結（非圖片）目的地必須以 http:// 或 https:// 開頭；相對路徑、#錨點、其他協定一律不可用 */
+  { id: "link-scheme", re: /(?<!!)\[[^\]]*\]\(\s*<?(?!https?:\/\/)[^)\s>]/i, msg: "連結僅支援 http(s)://；相對路徑、錨點與其他協定改為純文字或行內程式碼" },
+  /* $\cmd 或含 ^ _ { } \ 的 $…$ / $$…$$；純金額如 $100 不會命中 */
+  { id: "latex", re: /\$\$[^$\n]+\$\$|\$\\[a-zA-Z]+|\$[^$\n]*[\\^_{}][^$\n]*\$/, msg: "殘留 LaTeX／TeX 數學；改寫為 Unicode 或 Emoji 純文字" },
+  { id: "cjk-colon", re: new RegExp("\\*\\*[^*\\n]*[" + CJK + "][^*\\n]*\\*\\*(?:（[^）]*）)?:"), msg: "CJK 標題後請用全形冒號「：」且不加空格" }
 ];
+
+/* 遮蔽行內程式碼：`…` 與 ``…`` 內容換成等長空白，保留原行號與欄位 */
+function maskInlineCode(line) {
+  return line.replace(/(`+)([^`]|[^`][\s\S]*?[^`])\1(?!`)/g, function (m) { return " ".repeat(m.length); });
+}
+
+function isSetextUnderline(line, prev) {
+  if (prev == null || prev.trim() === "" || BLOCK_RE.test(prev) || LIST_RE.test(prev)) return false;
+  return /^ {0,3}=+\s*$/.test(line) || /^ {0,3}-+\s*$/.test(line);
+}
+
+function lint(source) {
+  const findings = [];
+  const lines = source.split("\n");
+  let fence = null; /* { ch, len } */
+  let prev = null;
+  lines.forEach((raw, i) => {
+    const m = FENCE_OPEN_RE.exec(raw);
+    if (fence) {
+      /* 只有同字元且長度不短於開頭者才算結尾 */
+      if (m && m[1][0] === fence.ch && m[1].length >= fence.len && raw.trim() === m[1].trim()) fence = null;
+      prev = null;
+      return;
+    }
+    if (m) { fence = { ch: m[1][0], len: m[1].length }; prev = null; return; }
+
+    if (isSetextUnderline(raw, prev)) {
+      findings.push({ line: i + 1, id: "setext-heading", msg: "底線式標題（=== / ---）不支援；改為 #、##、###", text: raw.trim() });
+    }
+    const line = maskInlineCode(raw);
+    for (const c of LINE_CHECKS) {
+      if (c.re.test(line)) findings.push({ line: i + 1, id: c.id, msg: c.msg, text: raw.trim() });
+    }
+    prev = raw;
+  });
+  return findings;
+}
 
 function read(argv) {
   const file = argv[2];
@@ -35,28 +81,15 @@ function read(argv) {
   return fs.readFileSync(0, "utf8");
 }
 
-function lint(markdown) {
-  const findings = [];
-  let inFence = false;
-  markdown.split("\n").forEach((line, i) => {
-    if (FENCE_RE.test(line)) { inFence = !inFence; return; }
-    if (inFence) return;
-    for (const c of CHECKS) {
-      if (c.re.test(line)) findings.push({ line: i + 1, id: c.id, msg: c.msg, text: line.trim() });
-    }
-  });
-  return findings;
-}
-
 function main() {
   const input = read(process.argv);
   const { markdown, stats } = convert(input);
-  const findings = lint(markdown);
+  const findings = lint(input);
   const length = Array.from(markdown).length;
   const statHits = Object.entries(stats).filter(([, n]) => n > 0);
 
   console.log("stats :", JSON.stringify(stats));
-  console.log("length:", length, length > LIMIT ? `(超過 ${LIMIT} 字元上限，請分段)` : "(OK)");
+  console.log("length:", length, length > LIMIT ? `(轉換後超過 ${LIMIT} 字元上限，請分段)` : "(OK)");
 
   let problems = 0;
   if (statHits.length) {
@@ -66,7 +99,7 @@ function main() {
   }
   if (findings.length) {
     problems += findings.length;
-    console.log("\n轉換器不會處理、需手動修正的項目：");
+    console.log("\n轉換器不會處理、需手動修正的項目（行號為草稿行號）：");
     for (const f of findings) console.log(`  - 第 ${f.line} 行 [${f.id}] ${f.msg}\n      ${f.text}`);
   }
   if (length > LIMIT) problems += 1;
@@ -75,4 +108,5 @@ function main() {
   process.exit(problems ? 1 : 0);
 }
 
-main();
+if (require.main === module) main();
+module.exports = { lint, maskInlineCode };

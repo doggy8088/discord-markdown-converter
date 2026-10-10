@@ -168,26 +168,41 @@ function runCheck(input) {
   const r = spawnSync(process.execPath, [CHECK], { input, encoding: "utf8" });
   return { code: r.status, out: r.stdout + r.stderr };
 }
-check("check.js 乾淨草稿通過", runCheck("### 標題\n- **欄位**：值\n  - **子項**：ok\n```\n![fence](x) - [ ] <b>ok</b>\n```").code, 0);
-const dirty = {
-  "image": "![img](https://x/y.png)",
-  "task-list": "- [ ] todo",
-  "footnote": "見註腳[^1]",
-  "nested-quote": "> > nested",
-  "html": "<details>x</details>",
-  "link-scheme": "[n](notion://x)",
-  "latex": "$\\foo$",
-  "cjk-colon": "**欄位**: 值"
-};
-for (const [id, line] of Object.entries(dirty)) {
+check("check.js 乾淨草稿通過", runCheck(
+  "### 標題\n- **欄位**：值\n  - **子項**：ok\n>>> 整段引用\n> 單層引用\n[a](https://x) [b](http://y) <https://z> <@123> <t:1700000000:R>\n" +
+  "金額 $100 與 $200 之間\n`<div>` 與 `![img](https://x)` 與 ``- [ ] `in code` ``\n```\n![fence](x) - [ ] <b>ok</b>\n~~~\nstill in fence\n```"
+).code, 0);
+const dirty = [
+  ["image", "![img](https://x/y.png)"],
+  ["image", "![alt][logo]"],
+  ["task-list", "-   [ ] todo"],
+  ["footnote", "見註腳[^1]"],
+  ["nested-quote", "> > nested"],
+  ["definition-list", "Term\n: definition"],
+  ["html", "<section>x</section>"],
+  ["html", "<br/>"],
+  ["link-scheme", "[n](notion://x)"],
+  ["link-scheme", "[guide](./guide.md)"],
+  ["link-scheme", "[s](#intro)"],
+  ["latex", "$\\foo$"],
+  ["latex", "$x^2 + y^2$"],
+  ["latex", "$$a_i$$"],
+  ["cjk-colon", "**欄位**:值"],
+  ["cjk-colon", "**モデル**: 値"],
+  ["setext-heading", "Heading\n======"],
+  ["setext-heading", "Heading\n------"]
+];
+for (const [id, line] of dirty) {
   const r = runCheck(line);
-  check(`check.js 抓到 [${id}]`, r.code === 1 && r.out.includes(`[${id}]`), true);
+  check(`check.js 抓到 [${id}] ← ${JSON.stringify(line)}`, r.code === 1 && r.out.includes(`[${id}]`), true);
 }
+check("check.js 行號對應草稿而非轉換結果",
+  runCheck("| a | b |\n|---|---|\n| 1 | 2 |\n| 3 | 4 |\n\n\n![img](https://x)").out.includes("第 7 行 [image]"), true);
+check("check.js 圍欄結尾須與開頭同字元", runCheck("```\n~~~\n```\n![x](https://x)").out.includes("[image]"), true);
 check("check.js 轉換器 stats 非 0 視為未通過", runCheck("| a | b |\n|---|---|\n| 1 | 2 |").code, 1);
 const deep = runCheck("#### 深標題");
 check("check.js H4+ 由轉換器 stats 回報", deep.code === 1 && deep.out.includes("headingsClamped"), true);
 check("check.js 超過 2,000 字元視為未通過", runCheck("x".repeat(2001)).code, 1);
-check("check.js http(s) 連結不誤報", runCheck("[a](https://x) [b](http://y) <https://z>").code, 0);
 
 console.log(failures === 0 ? "\n全部測試通過 ✔" : `\n${failures} 項測試失敗 ✘`);
 process.exit(failures === 0 ? 0 : 1);
